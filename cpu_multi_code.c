@@ -1,0 +1,509 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <pthread.h>
+#include <semaphore.h>
+#include <unistd.h>
+
+
+//################################################################################################################################ 
+// Bit manipulation
+
+
+
+
+	#define INT sizeof(int)*8
+
+	void SetBit( int* B, int pos){
+		B[ pos / INT ] |= 1 << (pos % INT);
+	}
+
+	void ClearBit( int* B, int pos){
+		B[ pos / INT ] &= ~(1 << (pos % INT));
+	}
+
+	int TestBit( int* B, int pos){
+		return ((B[ pos / INT ] & (1 << (pos % INT))) != 0 ) ;
+	}
+
+	void SetBits( int* B, int pos, int* A, int size){
+		for(int i = 0; i < size ; i ++){
+			if(A[i] == 1){
+				//SetBit(B,i);
+				B[ i / INT ] |= 1 << (i % INT);
+			}
+			else{
+				//ClearBit(B,i);
+				B[ i / INT ] &= ~(1 << (i % INT));
+			}
+		}
+	}
+
+	int TestBits( int* B, int pos, int size){ 
+		int num = 0;
+		size += pos;
+		for(int i = pos, j = 0; i < size ; i++, j++){
+			num |= TestBit(B,i) << j ;
+		}
+		return num;
+	}
+
+
+
+
+// Bit Manipulation
+//################################################################################################################################
+// Defines
+
+
+
+
+	// Fixed sizes
+	#define RAM_SIZE 128
+
+	// all these defines have (int*) as arguments
+
+	// INSTRUCTION GETTERS
+	#define OPCODE(instruction_adress) TestBits(instruction_adress,26,6)
+	#define RS(instruction_adress) TestBits(instruction_adress,21,5)
+	#define RT(instruction_adress) TestBits(instruction_adress,16,5)
+	#define RD(instruction_adress) TestBits(instruction_adress,11,5)
+	#define IMMEDIATE(instruction_adress) TestBits(instruction_adress,0,16)
+	#define ADRESS(instruction_adress) TestBits(instruction_adress,0,)
+	#define FUNCTION_FIELD(instruction_adress) TestBits(instruction_adress,0,6)
+	#define SHAMT(instruction_adress) TestBits(instruction_adress,6,5)
+
+	// CU Read Signals
+	#define getRegDst(CU_SIGNALS) TestBits(CU_SIGNALS,0,2)
+	#define getRegWrite(CU_SIGNALS) TestBits(CU_SIGNALS,2,1)
+	#define getALUSrcA(CU_SIGNALS) TestBits(CU_SIGNALS,3,1)
+	#define getALUSrcB(CU_SIGNALS) TestBits(CU_SIGNALS,4,2)
+	#define getALUOp(CU_SIGNALS) TestBits(CU_SIGNALS,6,2)
+	#define getPCSource(CU_SIGNALS) TestBits(CU_SIGNALS,8,2)
+	#define getPCWriteCond(CU_SIGNALS) TestBits(CU_SIGNALS,10,1)
+	#define getPCWrite(CU_SIGNALS) TestBits(CU_SIGNALS,11,1)
+	#define getIorD(CU_SIGNALS) TestBits(CU_SIGNALS,12,1)
+	#define getMemRead(CU_SIGNALS) TestBits(CU_SIGNALS,13,1)
+	#define getMemWrite(CU_SIGNALS) TestBits(CU_SIGNALS,14,1)
+	#define getBNE(CU_SIGNALS) TestBits(CU_SIGNALS,15,1)
+	#define getIRWrite(CU_SIGNALS) TestBits(CU_SIGNALS,16,1)
+	#define getMemtoReg(CU_SIGNALS) TestBits(CU_SIGNALS,17,2)
+
+	// CU Set Signals
+	#define setRegDst(CU_SIGNALS,vec_num) SetBits(CU_SIGNALS,0,vec_num,2)
+	#define setRegWrite(CU_SIGNALS,vec_num) SetBits(CU_SIGNALS,2,vec_num,1)
+	#define setALUSrcA(CU_SIGNALS,vec_num) SetBits(CU_SIGNALS,3,vec_num,1)
+	#define setALUSrcB(CU_SIGNALS,vec_num) SetBits(CU_SIGNALS,4,vec_num,2)
+	#define setALUOp(CU_SIGNALS,vec_num) SetBits(CU_SIGNALS,6,vec_num,2)
+	#define setPCSource(CU_SIGNALS,vec_num) SetBits(CU_SIGNALS,8,vec_num,2)
+	#define setPCWriteCond(CU_SIGNALS,vec_num) SetBits(CU_SIGNALS,10,vec_num,1)
+	#define setPCWrite(CU_SIGNALS,vec_num) SetBits(CU_SIGNALS,11,vec_num,1)
+	#define setIorD(CU_SIGNALS,vec_num) SetBits(CU_SIGNALS,12,vec_num,1)
+	#define setMemRead(CU_SIGNALS,vec_num) SetBits(CU_SIGNALS,13,vec_num,1)
+	#define setMemWrite(CU_SIGNALS,vec_num) SetBits(CU_SIGNALS,14,vec_num,1)
+	#define setBNE(CU_SIGNALS,vec_num) SetBits(CU_SIGNALS,15,vec_num,1)
+	#define setIRWrite(CU_SIGNALS,vec_num) SetBits(CU_SIGNALS,16,vec_num,1)
+	#define setMemtoReg(CU_SIGNALS,vec_num) SetBits(CU_SIGNALS,17,vec_num,2)
+
+	// Registers
+	#define $zero 0
+	#define $at 1
+	#define $v0 2
+	#define $v1 3
+	#define $a0 4
+	#define $a1 5
+	#define $a2 6
+	#define $a3 7
+	#define $t0 8
+	#define $t1 9
+	#define $t2 10
+	#define $t3 11
+	#define $t4 12
+	#define $t5 13
+	#define $t6 14
+	#define $t7 15
+	#define $s0 16
+	#define $s1 17
+	#define $s2 18
+	#define $s3 19
+	#define $s4 20
+	#define $s5 21
+	#define $s6 22
+	#define $s7 23
+	#define $t8 24
+	#define $t9 25
+	#define $k0 26
+	#define $k1 27
+	#define $gp 28
+	#define $sp 29
+	#define $fp 30
+	#define $ra 31
+
+
+// Defines
+//################################################################################################################################
+// Global variables
+
+
+
+
+	// semaphores to control threads
+	sem_t clock_sem, main_sem, pc_sem, ram_sem, ir_sem, alu_sem, cu_sem ;
+
+	// has the last adress read from memory
+	int mar = 0;
+	// has all the signals from CU
+	int cu_signals = 0;
+	
+	// connections
+	int pc, muxAddressResult, memData, writeData, memDataRegister;
+	int instruction_15_0, instruction_20_16, instruction_25_21, instruction_31_26, instruction_15_11, instruction_5_0, instruction_25_0;
+	int signExtendOut, shiftLeftMuxALUB, shiftLeftMuxPCSource;
+	int outMuxBNE, andToOr, orToPc, muxToPc, outMuxRegDst, outMuxMemToReg;
+	int ALUResult;
+		
+	//value of registers
+	int A, B, ALUOutResult;
+
+
+// Global variables
+//################################################################################################################################
+//Threads/Modules
+
+
+
+
+
+	void* CU(void* arg){ // Control Unit
+		// initialize this thread before while(1)
+		
+		while(1){
+			
+
+			sem_post(&pc_sem);
+		}
+	}
+
+	void* PC(void* arg){ // Program Counter
+		// initialize this thread before while(1)
+		int pc = 0; // current value of pc
+
+		while(1){
+			sem_wait(&pc_sem);
+
+			sem_post(&ram_sem);
+			pc++;
+		}
+	}
+
+	void* RAM(void* arg){ // Random Access Memory
+		// initialize this thread before while(1)
+		int ram[RAM_SIZE]; // o conteudo da ram
+		int iord; // get the iord signal from cu
+
+		memset(ram,0,RAM_SIZE*sizeof(int));
+		while(1){
+			sem_wait(&pc_sem);
+		}
+	}
+
+	void* IR(void* arg){ // Instruction register
+		// initialize this thread before while(1)
+
+		while(1){
+			
+		}
+	}
+
+	void* MBR(void* arg){ // Memory Buffer Register
+		// initialize this thread before while(1)
+
+		while(1){
+			
+		}
+	}
+
+	void* RegisterBank(void* arg){ // Register Bank: Contains register from 0 to 31
+		// initialize this thread before while(1)
+		int regs[32]; // all registers
+		memset(regs,0,32*sizeof(int));
+
+		while(1){
+			
+		}
+	}
+
+	void* ALU(void* arg){ // Arithmetic Logic Unit
+		// initialize this thread before while(1)
+
+		while(1){
+			
+		}
+	}
+
+	void* MuxIorD(void* arg){
+		// initialize this thread before while(1)
+
+		while(1){
+			
+			if (getIorD(&cu_signals) == 0) {
+				sem_wait(&clock_sem);
+				muxAddressResult = pc;
+			} else if (getIorD(&cu_signals) == 1) {
+				sem_wait(&clock_sem);
+				muxAddressResult = ALUOutResult;
+			}
+
+		}
+	}
+
+
+	void* MuxALUA(void* arg){
+		// initialize this thread before while(1)
+
+		while(1){
+			
+
+			if (getALUSrcA(&cu_signals) == 0) {
+				sem_wait(&clock_sem);
+				ALUA = pc;
+			} else if (getALUSrcA(&cu_signals) == 1) {
+				sem_wait(&clock_sem);
+				ALUA = A;
+			}
+
+		}
+	}
+
+	void* MuxALUB(void* arg){
+		// initialize this thread before while(1)
+
+		while(1){
+			
+
+			if (getALUSrcB(&cu_signals) == 0) {
+				sem_wait(&clock_sem);
+				ALUB = B;
+			} else if (getALUSrcB(&cu_signals) == 1) {
+				sem_wait(&clock_sem);
+				ALUB = 4;
+			} else if (getALUSrcB(&cu_signals) == 2) {
+				sem_wait(&clock_sem);
+				ALUB = signExtendOut;
+			} else if (getALUSrcB(&cu_signals) == 3) {
+				sem_wait(&clock_sem);
+				ALUB = shiftLeftMuxALUB;
+			}
+		}
+	}
+
+	void* MuxBNE(void* arg){
+		// initialize this thread before while(1)
+
+		while(1){
+			
+
+			if (getBNE(&cu_signals) == 0) {
+				sem_wait(&clock_sem);
+				outMuxBNE = 0;
+			} else if (getBNE(&cu_signals) == 1) {
+				sem_wait(&clock_sem);
+				outMuxBNE = 1;
+			}
+		}
+	}
+
+	void* MuxPCSource(void* arg){
+		// initialize this thread before while(1)
+
+		while(1){
+			
+
+			if (getPCSource(&cu_signals) == 0) {
+				sem_wait(&clock_sem);
+				muxToPc = ALUResult;
+			} else if (getPCSource(&cu_signals) == 1) {
+				sem_wait(&clock_sem);
+				muxToPc = ALUOutResult;
+			} else if (getPCSource(&cu_signals) == 2) {
+				sem_wait(&clock_sem);
+				muxToPc = shiftLeftMuxPCSource;
+			} else if (getPCSource(&cu_signals) == 3) {
+				sem_wait(&clock_sem);
+				muxToPc = A;
+			}
+		}
+	}
+
+	void* ALUControl(void* arg){
+		// initialize this thread before while(1)
+
+		while(1){
+			
+		}
+	}
+
+	void* MuxRegDst(void* arg){
+		// initialize this thread before while(1)
+
+		while(1){
+			if (getRegDst(&cu_signals) == 0) {
+				sem_wait(&clock_sem);
+				outMuxRegDst = instruction_20_16;
+			} else if (getRegDst(&cu_signals) == 1) {
+				sem_wait(&clock_sem);
+				outMuxRegDst = instruction_15_11;
+			} else if (getRegDst(&cu_signals) == 2) {
+				sem_wait(&clock_sem);
+				outMuxRegDst = 31;
+			}
+		}
+	}
+
+	void* MuxMemtoReg(void* arg){
+		// initialize this thread before while(1)
+
+		while(1){
+			if (getMemtoReg(&cu_signals) == 0) {
+				sem_wait(&clock_sem);
+				outMuxMemToReg = ALUOutResult;
+			} else if (getMemtoReg(&cu_signals) == 1) {
+				sem_wait(&clock_sem);
+				//outMuxMemToReg = mdr;
+			} else if (getMemtoReg(&cu_signals) == 2) {
+				sem_wait(&clock_sem);
+				outMuxMemToReg = pc;
+			}
+		}
+	}
+
+	void* A(void* arg){
+		// initialize this thread before while(1)
+
+		while(1){
+			
+		}
+	}
+
+	void* B(void* arg){
+		// initialize this thread before while(1)
+
+		while(1){
+			
+		}
+	}
+
+	void* ALUOut(void* arg){
+		// initialize this thread before while(1)
+
+		while(1){
+			
+		}
+	}
+
+	void* SignExtend(void* arg){
+		// initialize this thread before while(1)
+
+		while(1){
+			
+		}	
+	}
+
+	void* Shiftleft2ALU(void* arg){ // Shift block before ALU
+		// initialize this thread before while(1)
+
+		while(1){
+			shiftLeftMuxALUB = signExtendOut << 2;
+		}
+	}
+
+	void* Shiftleft2PCSource(void* arg){ // Shift block before PCSource mux
+		// initialize this thread before while(1)
+
+		while(1){
+			shiftLeftMuxPCSource = instruction_25_0 << 2;
+			//concatenar com PC[31-28]
+		}
+	}
+
+	void* AND(void* arg){
+		// initialize this thread before while(1)
+
+		while(1){
+
+			if (setPCWriteCond(&cu_signals) && outMuxBNE) {
+				andToOr = 1;
+			} else {
+				andToOr = 0;
+			}
+
+		}
+	}
+
+	void* OR(void* arg){
+		// initialize this thread before while(1)
+
+		while(1){
+			
+
+			if (getPCWrite(&cu_signals) && andToOr) {
+				orToPc = 1;
+			} else {
+				orToPc = 0;
+			}
+		}
+	}
+
+
+
+
+// Threads/Modules
+//################################################################################################################################
+// Main
+
+
+int main(){
+
+	// thread handles
+	pthread_t pc_th,ir_th,ram_th,mbr_th,registerbank_th,alu_th,muxiord_th,muxalua_th,muxalub_th,muxbne_th,and_th,or_th;
+	pthread_t muxpcsource_th,cu_th,alucontrol_th,muxregdst_th,muxmemtoreg_th,a_th,b_th,aluout_th,signextend_th,shiftleft2alu_th,shiftleft2pcsource_th;
+
+	sem_init(&clock_sem,0,0);
+
+	// initialises all modules
+	pthread_create(&pc_th,NULL,PC,NULL);
+	pthread_create(&ir_th,NULL,IR,NULL);
+	pthread_create(&ram_th,NULL,RAM,NULL);
+	pthread_create(&mbr_th,NULL,MBR,NULL);
+	pthread_create(&registerbank_th,NULL,RegisterBank,NULL);
+	pthread_create(&alu_th,NULL,ALU,NULL);
+	pthread_create(&muxiord_th,NULL,MuxIorD,NULL);
+	pthread_create(&muxalua_th,NULL,MuxALUA,NULL);
+	pthread_create(&muxalub_th,NULL,MuxALUB,NULL);
+	pthread_create(&muxbne_th,NULL,MuxBNE,NULL);
+	pthread_create(&muxpcsource_th,NULL,MuxPCSource,NULL);
+	pthread_create(&cu_th,NULL,CU,NULL);
+	pthread_create(&alucontrol_th,NULL,ALUControl,NULL);
+	pthread_create(&muxregdst_th,NULL,MuxRegDst,NULL);
+	pthread_create(&muxmemtoreg_th,NULL,MuxMemtoReg,NULL);
+	pthread_create(&a_th,NULL,A,NULL);
+	pthread_create(&b_th,NULL,B,NULL);
+	pthread_create(&aluout_th,NULL,ALUOut,NULL);
+	pthread_create(&signextend_th,NULL,SignExtend,NULL);
+	pthread_create(&shiftleft2alu_th,NULL,Shiftleft2ALU,NULL);
+	pthread_create(&shiftleft2pcsource_th,NULL,Shiftleft2PCSource,NULL);
+	pthread_create(&and_th,NULL,AND,NULL);
+	pthread_create(&or_th,NULL,OR,NULL);
+
+	while(1){
+		// aqui fic ao controle dos modulos, ou nos proprios modulos
+		// provavelmente por meio do clock
+	}
+
+
+	return 0;
+}
+
+
+// Main
+//################################################################################################################################
