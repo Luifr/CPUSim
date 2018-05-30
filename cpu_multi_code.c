@@ -69,7 +69,7 @@
 	#define RT(instruction_adress) TestBits(instruction_adress,16,5)
 	#define RD(instruction_adress) TestBits(instruction_adress,11,5)
 	#define IMMEDIATE(instruction_adress) TestBits(instruction_adress,0,16)
-	#define ADRESS(instruction_adress) TestBits(instruction_adress,0,)
+	#define ADRESS(instruction_adress) TestBits(instruction_adress,0,26)
 	#define FUNCTION_FIELD(instruction_adress) TestBits(instruction_adress,0,6)
 	#define SHAMT(instruction_adress) TestBits(instruction_adress,6,5)
 
@@ -198,7 +198,7 @@
 
 	void* RAM(void* arg){ // Random Access Memory
 		// initialize this thread before while(1)
-		int ram[RAM_SIZE]; // o conteudo da ram
+		unsigned int ram[RAM_SIZE]; // o conteudo da ram
 		int iord; // get the iord signal from cu
 
 		// carrega o programa passado pelo argumento para memoria
@@ -208,13 +208,14 @@
 		memset(ram,0,RAM_SIZE*sizeof(int));
 
 		while(fgetc(code) != EOF && fgetc(code) != EOF){
-			fseek(counter,-2,SEEK_CUR);
+			fseek(code,-2,SEEK_CUR);
 			fscanf(code,"%d",ram+counter);
 			counter++;
 		}
 
 		while(1){
 			sem_wait(&pc_sem);
+			
 		}
 	}
 
@@ -301,7 +302,7 @@
 			} else if (getALUSrcB() == 2) {
 				sem_wait(&clock_sem);
 				ALUB = signExtendOut;
-			} else if (getALUSrcB() == 3) {
+			} else if (getALUSrcB() == 3) { 
 				sem_wait(&clock_sem);
 				ALUB = shiftLeftMuxALUB;
 			}
