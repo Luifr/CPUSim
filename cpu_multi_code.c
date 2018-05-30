@@ -74,36 +74,36 @@
 	#define SHAMT(instruction_adress) TestBits(instruction_adress,6,5)
 
 	// CU Read Signals
-	#define getRegDst(CU_SIGNALS) TestBits(CU_SIGNALS,0,2)
-	#define getRegWrite(CU_SIGNALS) TestBits(CU_SIGNALS,2,1)
-	#define getALUSrcA(CU_SIGNALS) TestBits(CU_SIGNALS,3,1)
-	#define getALUSrcB(CU_SIGNALS) TestBits(CU_SIGNALS,4,2)
-	#define getALUOp(CU_SIGNALS) TestBits(CU_SIGNALS,6,2)
-	#define getPCSource(CU_SIGNALS) TestBits(CU_SIGNALS,8,2)
-	#define getPCWriteCond(CU_SIGNALS) TestBits(CU_SIGNALS,10,1)
-	#define getPCWrite(CU_SIGNALS) TestBits(CU_SIGNALS,11,1)
-	#define getIorD(CU_SIGNALS) TestBits(CU_SIGNALS,12,1)
-	#define getMemRead(CU_SIGNALS) TestBits(CU_SIGNALS,13,1)
-	#define getMemWrite(CU_SIGNALS) TestBits(CU_SIGNALS,14,1)
-	#define getBNE(CU_SIGNALS) TestBits(CU_SIGNALS,15,1)
-	#define getIRWrite(CU_SIGNALS) TestBits(CU_SIGNALS,16,1)
-	#define getMemtoReg(CU_SIGNALS) TestBits(CU_SIGNALS,17,2)
+	#define getRegDst() TestBits(&cu_signals,0,2)
+	#define getRegWrite() TestBits(&cu_signals,2,1)
+	#define getALUSrcA() TestBits(&cu_signals,3,1)
+	#define getALUSrcB() TestBits(&cu_signals,4,2)
+	#define getALUOp() TestBits(&cu_signals,6,2)
+	#define getPCSource() TestBits(&cu_signals,8,2)
+	#define getPCWriteCond() TestBits(&cu_signals,10,1)
+	#define getPCWrite() TestBits(&cu_signals,11,1)
+	#define getIorD() TestBits(&cu_signals,12,1)
+	#define getMemRead() TestBits(&cu_signals,13,1)
+	#define getMemWrite() TestBits(&cu_signals,14,1)
+	#define getBNE() TestBits(&cu_signals,15,1)
+	#define getIRWrite() TestBits(&cu_signals,16,1)
+	#define getMemtoReg() TestBits(&cu_signals,17,2)
 
 	// CU Set Signals
-	#define setRegDst(CU_SIGNALS,vec_num) SetBits(CU_SIGNALS,0,vec_num,2)
-	#define setRegWrite(CU_SIGNALS,vec_num) SetBits(CU_SIGNALS,2,vec_num,1)
-	#define setALUSrcA(CU_SIGNALS,vec_num) SetBits(CU_SIGNALS,3,vec_num,1)
-	#define setALUSrcB(CU_SIGNALS,vec_num) SetBits(CU_SIGNALS,4,vec_num,2)
-	#define setALUOp(CU_SIGNALS,vec_num) SetBits(CU_SIGNALS,6,vec_num,2)
-	#define setPCSource(CU_SIGNALS,vec_num) SetBits(CU_SIGNALS,8,vec_num,2)
-	#define setPCWriteCond(CU_SIGNALS,vec_num) SetBits(CU_SIGNALS,10,vec_num,1)
-	#define setPCWrite(CU_SIGNALS,vec_num) SetBits(CU_SIGNALS,11,vec_num,1)
-	#define setIorD(CU_SIGNALS,vec_num) SetBits(CU_SIGNALS,12,vec_num,1)
-	#define setMemRead(CU_SIGNALS,vec_num) SetBits(CU_SIGNALS,13,vec_num,1)
-	#define setMemWrite(CU_SIGNALS,vec_num) SetBits(CU_SIGNALS,14,vec_num,1)
-	#define setBNE(CU_SIGNALS,vec_num) SetBits(CU_SIGNALS,15,vec_num,1)
-	#define setIRWrite(CU_SIGNALS,vec_num) SetBits(CU_SIGNALS,16,vec_num,1)
-	#define setMemtoReg(CU_SIGNALS,vec_num) SetBits(CU_SIGNALS,17,vec_num,2)
+	#define setRegDst(vec_num) SetBits(&cu_signals,0,vec_num,2)
+	#define setRegWrite(vec_num) SetBits(&cu_signals,2,vec_num,1)
+	#define setALUSrcA(vec_num) SetBits(&cu_signals,3,vec_num,1)
+	#define setALUSrcB(vec_num) SetBits(&cu_signals,4,vec_num,2)
+	#define setALUOp(vec_num) SetBits(&cu_signals,6,vec_num,2)
+	#define setPCSource(vec_num) SetBits(&cu_signals,8,vec_num,2)
+	#define setPCWriteCond(vec_num) SetBits(&cu_signals,10,vec_num,1)
+	#define setPCWrite(vec_num) SetBits(&cu_signals,11,vec_num,1)
+	#define setIorD(vec_num) SetBits(&cu_signals,12,vec_num,1)
+	#define setMemRead(vec_num) SetBits(&cu_signals,13,vec_num,1)
+	#define setMemWrite(vec_num) SetBits(&cu_signals,14,vec_num,1)
+	#define setBNE(vec_num) SetBits(&cu_signals,15,vec_num,1)
+	#define setIRWrite(vec_num) SetBits(&cu_signals,16,vec_num,1)
+	#define setMemtoReg(vec_num) SetBits(&cu_signals,17,vec_num,2)
 
 	// Registers
 	#define $zero 0
@@ -246,10 +246,10 @@
 
 		while(1){
 			
-			if (getIorD(&cu_signals) == 0) {
+			if (getIorD() == 0) {
 				sem_wait(&clock_sem);
 				muxAddressResult = pc;
-			} else if (getIorD(&cu_signals) == 1) {
+			} else if (getIorD() == 1) {
 				sem_wait(&clock_sem);
 				muxAddressResult = ALUOutResult;
 			}
@@ -264,10 +264,10 @@
 		while(1){
 			
 
-			if (getALUSrcA(&cu_signals) == 0) {
+			if (getALUSrcA() == 0) {
 				sem_wait(&clock_sem);
 				ALUA = pc;
-			} else if (getALUSrcA(&cu_signals) == 1) {
+			} else if (getALUSrcA() == 1) {
 				sem_wait(&clock_sem);
 				ALUA = A;
 			}
@@ -281,16 +281,16 @@
 		while(1){
 			
 
-			if (getALUSrcB(&cu_signals) == 0) {
+			if (getALUSrcB() == 0) {
 				sem_wait(&clock_sem);
 				ALUB = B;
-			} else if (getALUSrcB(&cu_signals) == 1) {
+			} else if (getALUSrcB() == 1) {
 				sem_wait(&clock_sem);
 				ALUB = 4;
-			} else if (getALUSrcB(&cu_signals) == 2) {
+			} else if (getALUSrcB() == 2) {
 				sem_wait(&clock_sem);
 				ALUB = signExtendOut;
-			} else if (getALUSrcB(&cu_signals) == 3) {
+			} else if (getALUSrcB() == 3) {
 				sem_wait(&clock_sem);
 				ALUB = shiftLeftMuxALUB;
 			}
@@ -303,10 +303,10 @@
 		while(1){
 			
 
-			if (getBNE(&cu_signals) == 0) {
+			if (getBNE() == 0) {
 				sem_wait(&clock_sem);
 				outMuxBNE = 0;
-			} else if (getBNE(&cu_signals) == 1) {
+			} else if (getBNE() == 1) {
 				sem_wait(&clock_sem);
 				outMuxBNE = 1;
 			}
@@ -319,16 +319,16 @@
 		while(1){
 			
 
-			if (getPCSource(&cu_signals) == 0) {
+			if (getPCSource() == 0) {
 				sem_wait(&clock_sem);
 				muxToPc = ALUResult;
-			} else if (getPCSource(&cu_signals) == 1) {
+			} else if (getPCSource() == 1) {
 				sem_wait(&clock_sem);
 				muxToPc = ALUOutResult;
-			} else if (getPCSource(&cu_signals) == 2) {
+			} else if (getPCSource() == 2) {
 				sem_wait(&clock_sem);
 				muxToPc = shiftLeftMuxPCSource;
-			} else if (getPCSource(&cu_signals) == 3) {
+			} else if (getPCSource() == 3) {
 				sem_wait(&clock_sem);
 				muxToPc = A;
 			}
@@ -347,13 +347,13 @@
 		// initialize this thread before while(1)
 
 		while(1){
-			if (getRegDst(&cu_signals) == 0) {
+			if (getRegDst() == 0) {
 				sem_wait(&clock_sem);
 				outMuxRegDst = instruction_20_16;
-			} else if (getRegDst(&cu_signals) == 1) {
+			} else if (getRegDst() == 1) {
 				sem_wait(&clock_sem);
 				outMuxRegDst = instruction_15_11;
-			} else if (getRegDst(&cu_signals) == 2) {
+			} else if (getRegDst() == 2) {
 				sem_wait(&clock_sem);
 				outMuxRegDst = 31;
 			}
@@ -364,13 +364,13 @@
 		// initialize this thread before while(1)
 
 		while(1){
-			if (getMemtoReg(&cu_signals) == 0) {
+			if (getMemtoReg() == 0) {
 				sem_wait(&clock_sem);
 				outMuxMemToReg = ALUOutResult;
-			} else if (getMemtoReg(&cu_signals) == 1) {
+			} else if (getMemtoReg() == 1) {
 				sem_wait(&clock_sem);
 				//outMuxMemToReg = mdr;
-			} else if (getMemtoReg(&cu_signals) == 2) {
+			} else if (getMemtoReg() == 2) {
 				sem_wait(&clock_sem);
 				outMuxMemToReg = pc;
 			}
@@ -431,7 +431,7 @@
 
 		while(1){
 
-			if (setPCWriteCond(&cu_signals) && outMuxBNE) {
+			if (setPCWriteCond() && outMuxBNE) { // aqui n e get?
 				andToOr = 1;
 			} else {
 				andToOr = 0;
@@ -446,7 +446,7 @@
 		while(1){
 			
 
-			if (getPCWrite(&cu_signals) && andToOr) {
+			if (getPCWrite() && andToOr) {
 				orToPc = 1;
 			} else {
 				orToPc = 0;
