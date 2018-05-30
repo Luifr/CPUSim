@@ -201,7 +201,18 @@
 		int ram[RAM_SIZE]; // o conteudo da ram
 		int iord; // get the iord signal from cu
 
+		// carrega o programa passado pelo argumento para memoria
+		FILE* code = fopen((char*)arg,"r");
+		int counter = 0;
+
 		memset(ram,0,RAM_SIZE*sizeof(int));
+
+		while(fgetc(code) != EOF && fgetc(code) != EOF){
+			fseek(counter,-2,SEEK_CUR);
+			fscanf(code,"%d",ram+counter);
+			counter++;
+		}
+
 		while(1){
 			sem_wait(&pc_sem);
 		}
@@ -462,7 +473,7 @@
 // Main
 
 
-int main(){
+int main(int argc, char* argv[]){
 
 	// thread handles
 	pthread_t pc_th,ir_th,ram_th,mbr_th,registerbank_th,alu_th,muxiord_th,muxalua_th,muxalub_th,muxbne_th,and_th,or_th;
@@ -473,7 +484,7 @@ int main(){
 	// initialises all modules
 	pthread_create(&pc_th,NULL,PC,NULL);
 	pthread_create(&ir_th,NULL,IR,NULL);
-	pthread_create(&ram_th,NULL,RAM,NULL);
+	pthread_create(&ram_th,NULL,RAM,(void*)argv[1]);
 	pthread_create(&mbr_th,NULL,MBR,NULL);
 	pthread_create(&registerbank_th,NULL,RegisterBank,NULL);
 	pthread_create(&alu_th,NULL,ALU,NULL);
