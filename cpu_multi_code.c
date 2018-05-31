@@ -148,7 +148,7 @@
 
 
 	// semaphores to control threads
-	sem_t clock_sem, main_sem, pc_sem, ram_sem, ir_sem, alu_sem, cu_sem ;
+	sem_t clock_sem, main_sem, pc_sem, ram_sem, ir_sem, alu_sem, cu_sem, mbr_sem ;
 
 	// has the last adress read from memory
 	int mar = 0;
@@ -163,7 +163,7 @@
 	int ALUResult;
 		
 	//value of registers
-	int A, B, ALUOutResult;
+	int a_reg, b_reg, ALUOutResult;
 
 
 // Global variables
@@ -179,20 +179,22 @@
 		
 		while(1){
 			
-
-			sem_post(&pc_sem);
 		}
 	}
 
 	void* PC(void* arg){ // Program Counter
 		// initialize this thread before while(1)
-		int pc = 0; // current value of pc
+		int pc_local = 0; // current value of pc
 
 		while(1){
-			sem_wait(&pc_sem);
-
-			sem_post(&ram_sem);
-			pc++;
+			sem_wait(&pc_sem); // it waits for the semaphore to allow it to run
+			pc_local += 4; // points to next instruction
+			if(orToPc == 1){ // if condition to write in pc
+				pc_local = muxToPc; // overwrite pc with adress location
+			}
+			sem_post(&iord_mux_sem); // start next modules
+			sem_wait(&clock_sem);
+			pc = pc_local; // update global pc value after clock
 		}
 	}
 
@@ -201,7 +203,7 @@
 		unsigned int ram[RAM_SIZE]; // o conteudo da ram
 		int iord; // get the iord signal from cu
 
-		// carrega o programa passado pelo argumento para memoria
+		// load program from input file to ram
 		FILE* code = fopen((char*)arg,"r");
 		int counter = 0;
 
@@ -214,8 +216,15 @@
 		}
 
 		while(1){
-			sem_wait(&pc_sem);
-			
+			sem_wait(&ram_sem);
+			if(getMemRead() == 1){
+				mar = ram[muxAddressResult/4];
+			}
+			else if(getMemWrite() == 1){
+				ram[muxAddressResult/4] = b_reg;
+			}
+			sem_post(&ir_sem);
+			sem_post(&mbr_sem);
 		}
 	}
 
@@ -229,9 +238,10 @@
 
 	void* MBR(void* arg){ // Memory Buffer Register
 		// initialize this thread before while(1)
-
 		while(1){
+		sem_wait(&mbr_sem);
 			
+		sem_post(&memToReg_mux_sem);
 		}
 	}
 
@@ -241,7 +251,7 @@
 		memset(regs,0,32*sizeof(int));
 
 		while(1){
-			
+			sem_wait();
 		}
 	}
 
@@ -281,7 +291,7 @@
 				ALUA = pc;
 			} else if (getALUSrcA() == 1) {
 				sem_wait(&clock_sem);
-				ALUA = A;
+				ALUA = a_reg;
 			}
 
 		}
@@ -295,7 +305,7 @@
 
 			if (getALUSrcB() == 0) {
 				sem_wait(&clock_sem);
-				ALUB = B;
+				ALUB = b_reg;
 			} else if (getALUSrcB() == 1) {
 				sem_wait(&clock_sem);
 				ALUB = 4;
@@ -342,7 +352,7 @@
 				muxToPc = shiftLeftMuxPCSource;
 			} else if (getPCSource() == 3) {
 				sem_wait(&clock_sem);
-				muxToPc = A;
+				muxToPc = a_reg;
 			}
 		}
 	}
