@@ -69,7 +69,7 @@
 	#define RT(instruction_adress) TestBits(instruction_adress,16,5)
 	#define RD(instruction_adress) TestBits(instruction_adress,11,5)
 	#define IMMEDIATE(instruction_adress) TestBits(instruction_adress,0,16)
-	#define ADRESS(instruction_adress) TestBits(instruction_adress,0,)
+	#define ADRESS(instruction_adress) TestBits(instruction_adress,0,26)
 	#define FUNCTION_FIELD(instruction_adress) TestBits(instruction_adress,0,6)
 	#define SHAMT(instruction_adress) TestBits(instruction_adress,6,5)
 
@@ -149,6 +149,7 @@
 
 	// semaphores to control threads
 	sem_t clock_sem, main_sem, pc_sem, ram_sem, ir_sem, alu_sem, cu_sem ;
+	sem_t regDst_mux_sem, memToReg_mux_sem
 
 	// has the last adress read from memory
 	int mar = 0;
@@ -157,7 +158,7 @@
 	
 	// connections
 	int pc, muxAddressResult, memData, writeData, memDataRegister;
-	int instruction_15_0, instruction_20_16, instruction_25_21, instruction_31_26, instruction_15_11, instruction_5_0, instruction_25_0;
+	int instruction_15_0, instruction_20_16, instruction_25_21, instruction_31_26, instruction_15_11, instruction_6_10, instruction_5_0, instruction_25_0;
 	int signExtendOut, shiftLeftMuxALUB, shiftLeftMuxPCSource;
 	int outMuxBNE, andToOr, orToPc, muxToPc, outMuxRegDst, outMuxMemToReg;
 	int ALUResult;
@@ -220,9 +221,25 @@
 
 	void* IR(void* arg){ // Instruction register
 		// initialize this thread before while(1)
-
+	
 		while(1){
-			
+			if(getIRWrite() == 1){
+				
+				sem_wait(&ir_sem);    //
+				sem_wait(&clock_sem);  //
+
+				instruction_31_26 = OPCODE(&mar); 
+				instruction_25_21 = RS(&mar);    
+				instruction_20_16 = RT(&mar);
+				instruction_15_11 = RD(&mar);
+				instruction_15_0  = IMMEDIATE(&mar);
+				instruction_25_0  = ADDRESS(&mar);
+				instruction_5_0   = FUNCTION_FIELD(&mar);
+				instruction_6_10  = SHAMT(&mar);
+
+				sem_post(&memToReg_mux_sem); //Now, the mux controlled by the UC signal MemToReg is unlocked
+				sem_post(regDst_mux_sem);    //Now, the mux controlled by the UC signal RegDst is unlocked
+			}
 		}
 	}
 
@@ -509,6 +526,8 @@ int main(int argc, char* argv[]){
 	while(1){
 		// aqui fic ao controle dos modulos, ou nos proprios modulos
 		// provavelmente por meio do clock
+		sem_post(clock_sem);
+
 	}
 
 
