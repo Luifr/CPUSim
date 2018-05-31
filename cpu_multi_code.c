@@ -150,7 +150,7 @@
 	// semaphores to control threads
 	sem_t clock_sem, main_sem, pc_sem, ram_sem, ir_sem, alu_sem, cu_sem, mbr_sem ;
 	sem_t regDst_mux_sem, memToReg_mux_sem, iord_mux_sem, a_sem, b_sem, regBank_sem, aluControl_sem;
-	sem_t signExtend_sem, aluSrcA_mux_sem, aluSrcB_mux_sem, signExtend_sem, shiftLeftMuxALU_sem;
+	sem_t aluSrcA_mux_sem, aluSrcB_mux_sem, signExtend_sem, shiftLeftMuxALU_sem;
 	sem_t pcSrc_mux_sem, aluOut_sem, bne_mux_sem, and_sem, or_sem, shiftLeftPCSrc_sem;
 
 	// has all the signals from CU
@@ -203,7 +203,6 @@
 	void* RAM(void* arg){ 
 		// initialize this thread before while(1)
 		unsigned int ram[RAM_SIZE]; // o conteudo da ram
-		int iord; // get the iord signal from cu
 
 		// load program from input file to ram
 		FILE* code = fopen((char*)arg,"r");
@@ -558,7 +557,31 @@ int main(int argc, char* argv[]){
 	pthread_t pc_th,ir_th,ram_th,mbr_th,registerbank_th,alu_th,muxiord_th,muxalua_th,muxalub_th,muxbne_th,and_th,or_th;
 	pthread_t muxpcsource_th,cu_th,alucontrol_th,muxregdst_th,muxmemtoreg_th,a_th,b_th,aluout_th,signextend_th,shiftleft2alu_th,shiftleft2pcsource_th;
 
+	// initialises all semaphores
 	sem_init(&clock_sem,0,0);
+	sem_init(&pc_sem,0,0);
+	sem_init(&ram_sem,0,0);
+	sem_init(&ir_sem,0,0);
+	sem_init(&alu_sem,0,0);
+	sem_init(&cu_sem,0,0);
+	sem_init(&mbr_sem,0,0);
+	sem_init(&regDst_mux_sem,0,0);
+	sem_init(&memToReg_mux_sem,0,0);
+	sem_init(&iord_mux_sem,0,0);
+	sem_init(&a_sem,0,0);
+	sem_init(&b_sem,0,0);
+	sem_init(&regBank_sem,0,0);
+	sem_init(&aluControl_sem,0,0);
+	sem_init(&signExtend_sem,0,0);
+	sem_init(&aluSrcA_mux_sem,0,0);
+	sem_init(&aluSrcB_mux_sem,0,0);
+	sem_init(&shiftLeftMuxALU_sem,0,0);
+	sem_init(&shiftLeftPCSrc_sem,0,0);
+	sem_init(&pcSrc_mux_sem,0,0);
+	sem_init(&aluOut_sem,0,0);
+	sem_init(&bne_mux_sem,0,0);
+	sem_init(&and_sem,0,0);
+	sem_init(&or_sem,0,0);
 
 	// initialises all modules
 	pthread_create(&pc_th,NULL,PC,NULL);
