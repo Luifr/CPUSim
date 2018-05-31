@@ -171,6 +171,7 @@
 //################################################################################################################################
 //Threads/Modules
 
+	
 	// CONTROL UNIT ------------------------------------------------------------------------
 	void* CU(void* arg){ 
 		// initialize this thread before while(1)
@@ -182,7 +183,7 @@
 		}
 	}
 
-	//PROGRAM COUNTER ------------------------------------------------------------------------
+	//PROGRAM COUNTER --------------------------------------------------------------------------------
 	void* PC(void* arg){ 
 		// initialize this thread before while(1)
 		int pc_local = 0; // current value of pc
@@ -199,7 +200,7 @@
 		}
 	}
 
-	//RANDOM ACCESS MEMORY ----------------------------------------------------------------------
+	//RANDOM ACCESS MEMORY ---------------------------------------------------------------------------
 	void* RAM(void* arg){ 
 		// initialize this thread before while(1)
 		unsigned int ram[RAM_SIZE]; // o conteudo da ram
@@ -230,7 +231,7 @@
 		}
 	}
 
-	//INSTRUCTION REGISTER ------------------------------------------------------------------------
+	//INSTRUCTION REGISTER ---------------------------------------------------------------------------
 	void* IR(void* arg){ 
 		// initialize this thread before while(1)
 	
@@ -250,7 +251,7 @@
 				instruction_5_0   = FUNCTION_FIELD(&instruction);
 				instruction_6_10  = SHAMT(&instruction);
 			}
-			sem_post(&memToReg_mux_sem);   //Now, the mux controlled by the UC signal MemToReg is unlocked
+			
 			sem_post(&regDst_mux_sem);     //Now, the mux controlled by the UC signal RegDst is unlocked
 			sem_post(&regBank_sem);        //...
 			sem_post(&aluControl_sem);     //...
@@ -258,7 +259,7 @@
 		}
 	}
 
-	//MEMORY BUFFER REGISTER ------------------------------------------------------------------------
+	//MEMORY BUFFER REGISTER -------------------------------------------------------------------------
 	void* MBR(void* arg){ 
 		// initialize this thread before while(1)
 		mbr = 0;
@@ -275,7 +276,7 @@
 		}
 	}
 
-	//REGISTER BANK ------------------------------------------------------------------------
+	//REGISTER BANK ----------------------------------------------------------------------------------
 	void* RegisterBank(void* arg){ //Contains register from 0 to 31
 		
 		// initialize this thread before while(1)
@@ -295,7 +296,8 @@
 
 			//Verifies if control unit allows to write on register bank:
 			if (getRegWrite() == 1) {
-				
+				//if so... the register defined by the RegDst Mux receives the content choosen by the MemToReg Mux
+				regs[outMuxRegDst] = outMuxMemToReg;
 			}
 
 			//now that 
@@ -306,7 +308,8 @@
 		}
 	}
 
-	void* ALU(void* arg){ // Arithmetic Logic Unit
+	//ARITHMETIC LOGIC UNIT  -------------------------------------------------------------------------
+	void* ALU(void* arg){
 		// initialize this thread before while(1)
 
 		while(1){
@@ -318,45 +321,54 @@
 		}
 	}
 
+	//MUX CONTROLLED BY THE SIGNAL IorD --------------------------------------------------------------
 	void* MuxIorD(void* arg){
 		// initialize this thread before while(1)
+		muxAddressResult = 0;
 
 		while(1){
-			sem_wait(&iord_mux_sem);
+			sem_wait(&iord_mux_sem); //if PC function already executed
+
 			if (getIorD() == 0) {
 				muxAddressResult = pc;
 			} 
 			else if (getIorD() == 1) {
 				muxAddressResult = ALUOutResult;
 			}
-			sem_post(&ram_sem);
+			sem_post(&ram_sem); // allows RAM function to work
 		}
 	}
 
-
+	//MUX CONTROLLED BY THE SIGNAL ALUSrcA -----------------------------------------------------------
 	void* MuxALUA(void* arg){
 		// initialize this thread before while(1)
+		ALUA = 0;
 
 		while(1){
-			sem_wait(&aluSrcA_mux_sem);
+			sem_wait(&aluSrcA_mux_sem); //waits till the A_register function execute firt
+
 			if (getALUSrcA() == 0) {
 				ALUA = pc;
 			}
 			else if (getALUSrcA() == 1) {
 				ALUA = a_reg;
 			}
-			sem_post(&alu_sem);
+
+			sem_post(&alu_sem); //this MuxALUA function is one of the functions that allows ALU to run
 		}
 	}
 
+	//MUX CONTROLLED BY THE SIGNAL ALUSrcB -----------------------------------------------------------
 	void* MuxALUB(void* arg){
 		// initialize this thread before while(1)
+		ALUB = 0;
 
 		while(1){
-			sem_wait(&aluSrcB_mux_sem);
-			sem_wait(&aluSrcB_mux_sem);
+			sem_wait(&aluSrcB_mux_sem); // B() (B register function) has to allow this mux function to execute
+			sem_wait(&aluSrcB_mux_sem); // Shiftleft2ALU() has to allow this mux function to execute
+
 			if (getALUSrcB() == 0) {
-				ALUB = b_reg;
+				ALUB = b_reg; 
 			}
 			else if (getALUSrcB() == 1) {
 				ALUB = 4;
@@ -367,31 +379,38 @@
 			else if (getALUSrcB() == 3) { 
 				ALUB = shiftLeftMuxALU;
 			}
-			sem_post(&alu_sem);
+
+			sem_post(&alu_sem); //this MuxALUA function is one of the functions that allows ALU to run
 		}
 	}
 
+	//MUX CONTROLLED BY THE SIGNAL BNE  --------------------------------------------------------------
 	void* MuxBNE(void* arg){
 		// initialize this thread before while(1)
+		outMuxBNE = 0;
 
-		while(1){
-			sem_wait(&bne_mux_sem);
+		while(1){	
+			sem_wait(&bne_mux_sem); //waits until MuxPCSource() function allows it to execute 
+
 			if (getBNE() == 0) {
 				outMuxBNE = 0;
 			} 
 			else if (getBNE() == 1) {
 				outMuxBNE = 1;
 			}
-			sem_post(&cu_sem);
+			sem_post(&cu_sem); //allows UC function to run
 		}
 	}
 
+	//MUX CONTROLLED BY THE SIGNAL PCSource ----------------------------------------------------------
 	void* MuxPCSource(void* arg){
 		// initialize this thread before while(1)
+		muxToPc = 0;
 
 		while(1){
-			sem_wait(&pcSrc_mux_sem);
-			sem_wait(&pcSrc_mux_sem);
+			sem_wait(&pcSrc_mux_sem); //waits until Shiftleft2PCSource() function allows it to execute 
+			sem_wait(&pcSrc_mux_sem); //waits until ALUout function also allows it to execute
+
 			if (getPCSource() == 0) {
 				muxToPc = ALUResult;
 			}
@@ -404,24 +423,30 @@
 			else if (getPCSource() == 3) {
 				muxToPc = a_reg;
 			}
-			sem_wait(&bne_mux_sem);
+
+			sem_wait(&bne_mux_sem); // allows MuxBNE function to run
 		}
 	}
 
+	//ALU CONTROL ------------------------------------------------------------------------------------
 	void* ALUControl(void* arg){
 		// initialize this thread before while(1)
 		while(1){
-		sem_wait(&aluControl_sem);
-			
-		sem_post(&alu_sem);
+			sem_wait(&aluControl_sem);
+
+
+			sem_post(&alu_sem);
 		}
 	}
 
+	//MUX CONTROLLED BY THE SIGNAL RegDst ------------------------------------------------------------
 	void* MuxRegDst(void* arg){
 		// initialize this thread before while(1)
+		outMuxRegDst = 0;
 
 		while(1){
-			sem_wait(&regDst_mux_sem);
+			sem_wait(&regDst_mux_sem); //waits till IR function allows this function to execute
+
 			if (getRegDst() == 0) {
 				outMuxRegDst = instruction_20_16;
 			}
@@ -431,50 +456,55 @@
 			else if (getRegDst() == 2) {
 				outMuxRegDst = 31;
 			}
-			sem_post(&regBank_sem);
+			sem_post(&regBank_sem); // allows RegisterBank() function to execute
 		}
 	}
 
+	//MUX CONTROLLED BY THE SIGNAL MemToReg ----------------------------------------------------------
 	void* MuxMemtoReg(void* arg){
 		// initialize this thread before while(1)
+		outMuxMemToReg = 0;
 
 		while(1){
-			sem_wait(&memToReg_mux_sem);
-			sem_wait(&memToReg_mux_sem);
+			sem_wait(&memToReg_mux_sem); // waits till MBR() allows it to run
+
 			if (getMemtoReg() == 0) {
-				sem_wait(&clock_sem);
 				outMuxMemToReg = ALUOutResult;
 			} else if (getMemtoReg() == 1) {
-				sem_wait(&clock_sem);
-				//outMuxMemToReg = mdr;
+				outMuxMemToReg = mbr;
 			} else if (getMemtoReg() == 2) {
-				sem_wait(&clock_sem);
 				outMuxMemToReg = pc;
 			}
-			sem_post(&regBank_sem);
+
+			sem_post(&regBank_sem); // allows RegisterBank() to execute
 		}
 	}
 
+	//A REGISTER -------------------------------------------------------------------------------------
 	void* A(void* arg){
 		// initialize this thread before while(1)
+		a_reg = 0;
 
 		while(1){
-			sem_wait(&a_sem);
+			sem_wait(&a_sem); //waits for RegisterBanks() allows it to run (even if there's nothing here....)
 
-			sem_post(&aluSrcA_mux_sem);
+			sem_post(&aluSrcA_mux_sem); //allows this mux to execute
 		}
 	}
 
+	//B REGISTER -------------------------------------------------------------------------------------
 	void* B(void* arg){
 		// initialize this thread before while(1)
+		b_reg = 0;
 
 		while(1){
-			sem_wait(&b_sem);
+			sem_wait(&b_sem); //waits for RegisterBanks() allows it to run (even if there's nothing here....)
 
-			sem_post(&aluSrcB_mux_sem);
+			sem_post(&aluSrcB_mux_sem); //allows this mux to execute
 		}
 	}
 
+	//ALUOut REGISTER --------------------------------------------------------------------------------
 	void* ALUOut(void* arg){
 		// initialize this thread before while(1)
 
@@ -485,6 +515,7 @@
 		}
 	}
 
+	//SIGN EXTEND ------------------------------------------------------------------------------------
 	void* SignExtend(void* arg){
 		// initialize this thread before while(1)
 
@@ -495,52 +526,67 @@
 		}	
 	}
 
-	void* Shiftleft2ALU(void* arg){ // Shift block before ALU
+	//SHIFT LEFT 2 COMING COMING FROM SIGN EXTEND ----------------------------------------------------
+	void* Shiftleft2ALU(void* arg){ 
 		// initialize this thread before while(1)
 
 		while(1){
-			sem_wait(&shiftLeftMuxALU_sem);
+			sem_wait(&shiftLeftMuxALU_sem); // waits till SignExtend() fucntion allows it to execute
+
 			shiftLeftMuxALU = signExtendOut << 2;
-			sem_post(aluSrcB_mux_sem);
+			
+			sem_post(aluSrcB_mux_sem); //allows MuxALUB() to run
 		}
 	}
 
+	//SHIFT LEFT 2 COMING FROM IR --------------------------------------------------------------------
 	void* Shiftleft2PCSource(void* arg){ // Shift block before PCSource mux
 		// initialize this thread before while(1)
 
 		while(1){
-			sem_wait(&shiftLeftPCSrc_sem);
+			sem_wait(&shiftLeftPCSrc_sem); //waits till IR allows it to run
+
 			shiftLeftMuxPCSource = instruction_25_0 << 2;
 			//concatenar com PC[31-28]
-			sem_wait(&pcSrc_mux_sem);
+
+			sem_wait(&pcSrc_mux_sem); //allows MuxPCSource() to run
 		}
 	}
 
+
+	// (PCWriteCond && outMuxBNE) --------------------------------------------------------------------
 	void* AND(void* arg){
 		// initialize this thread before while(1)
+		andToOr = 0;
 
 		while(1){
-			sem_wait(&and_sem);
-			if (getPCWriteCond() && outMuxBNE) {
+			sem_wait(&and_sem); //waits until CU() (control unit) allows it to run
+
+			if (getPCWriteCond() == 1 && outMuxBNE == 1) {
 				andToOr = 1;
 			} else {
 				andToOr = 0;
 			}
-			sem_post(&or_sem);
+
+			sem_post(&or_sem); //allows OR() to execute
 		}
 	}
 
+	// (PCWrite || andToOr) --------------------------------------------------------------------------
 	void* OR(void* arg){
 		// initialize this thread before while(1)
+		orToPc = 0;
 
 		while(1){
-			sem_wait(&or_sem);
-			if (getPCWrite() && andToOr) {
+			sem_wait(&or_sem); //waits till AND function runs first
+		
+			if (getPCWrite() == 1 && andToOr == 1) {
 				orToPc = 1;
 			} else {
 				orToPc = 0;
+		
 			}
-			sem_post(&pc_sem);
+			sem_post(&pc_sem);//allows writting in pc
 		}
 	}
 
