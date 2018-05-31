@@ -153,30 +153,26 @@
 	sem_t signExtend_sem, aluSrcA_mux_sem, aluSrcB_mux_sem, signExtend_sem, shiftLeftMuxALU_sem;
 	sem_t pcSrc_mux_sem, aluOut_sem, bne_mux_sem, and_sem, or_sem, shiftLeftPCSrc_sem;
 
-	// has the last adress read from memory
-	int mar = 0;
 	// has all the signals from CU
 	int cu_signals = 0;
-	
+
 	// connections
 	int pc, muxAddressResult, memData, writeData, memDataRegister;
 	int instruction_15_0, instruction_20_16, instruction_25_21, instruction_31_26, instruction_15_11, instruction_6_10, instruction_5_0, instruction_25_0;
 	int signExtendOut, shiftLeftMuxALU, shiftLeftMuxPCSource;
 	int outMuxBNE, andToOr, orToPc, muxToPc, outMuxRegDst, outMuxMemToReg, ALUResult;
+	int instruction;
 		
 	//value of registers
-	int a_reg, b_reg, ALUOutResult, ALUA, ALUB;
+	int a_reg, b_reg, ALUOutResult, ALUA, ALUB, mbr;
 
 
 // Global variables
 //################################################################################################################################
 //Threads/Modules
 
-
-
-
-
-	void* CU(void* arg){ // Control Unit
+	// CONTROL UNIT ------------------------------------------------------------------------
+	void* CU(void* arg){ 
 		// initialize this thread before while(1)
 		
 		while(1){
@@ -186,7 +182,8 @@
 		}
 	}
 
-	void* PC(void* arg){ // Program Counter
+	//PROGRAM COUNTER ------------------------------------------------------------------------
+	void* PC(void* arg){ 
 		// initialize this thread before while(1)
 		int pc_local = 0; // current value of pc
 
@@ -202,7 +199,8 @@
 		}
 	}
 
-	void* RAM(void* arg){ // Random Access Memory
+	//RANDOM ACCESS MEMORY ----------------------------------------------------------------------
+	void* RAM(void* arg){ 
 		// initialize this thread before while(1)
 		unsigned int ram[RAM_SIZE]; // o conteudo da ram
 		int iord; // get the iord signal from cu
@@ -222,7 +220,7 @@
 		while(1){
 			sem_wait(&ram_sem);
 			if(getMemRead() == 1){
-				mar = ram[muxAddressResult/4];
+				instruction = ram[muxAddressResult/4];
 			}
 			else if(getMemWrite() == 1){
 				ram[muxAddressResult/4] = b_reg;
@@ -232,55 +230,79 @@
 		}
 	}
 
-	void* IR(void* arg){ // Instruction register
+	//INSTRUCTION REGISTER ------------------------------------------------------------------------
+	void* IR(void* arg){ 
 		// initialize this thread before while(1)
 	
 		while(1){
+			
+			sem_wait(&ir_sem);    
+			//sem_wait(&clock_sem); 
+
 			if(getIRWrite() == 1){
-				
-				sem_wait(&ir_sem);    //
-				//sem_wait(&clock_sem);  //
 
-				instruction_31_26 = OPCODE(&mar); 
-				instruction_25_21 = RS(&mar);    
-				instruction_20_16 = RT(&mar);
-				instruction_15_11 = RD(&mar);
-				instruction_15_0  = IMMEDIATE(&mar);
-				instruction_25_0  = ADDRESS(&mar);
-				instruction_5_0   = FUNCTION_FIELD(&mar);
-				instruction_6_10  = SHAMT(&mar);
-
-				sem_post(&memToReg_mux_sem); //Now, the mux controlled by the UC signal MemToReg is unlocked
-				sem_post(&regDst_mux_sem);    //Now, the mux controlled by the UC signal RegDst is unlocked
-				sem_post(&regBank_sem);
-				sem_post(&aluControl_sem);
-				sem_post(&shiftLeftPCSrc_sem);
+				instruction_31_26 = OPCODE(&instruction); 
+				instruction_25_21 = RS(&instruction);    
+				instruction_20_16 = RT(&instruction);
+				instruction_15_11 = RD(&instruction);
+				instruction_15_0  = IMMEDIATE(&instruction);
+				instruction_25_0  = ADDRESS(&instruction);
+				instruction_5_0   = FUNCTION_FIELD(&instruction);
+				instruction_6_10  = SHAMT(&instruction);
 			}
+			sem_post(&memToReg_mux_sem);   //Now, the mux controlled by the UC signal MemToReg is unlocked
+			sem_post(&regDst_mux_sem);     //Now, the mux controlled by the UC signal RegDst is unlocked
+			sem_post(&regBank_sem);        //...
+			sem_post(&aluControl_sem);     //...
+			sem_post(&shiftLeftPCSrc_sem); //...
 		}
 	}
 
-	void* MBR(void* arg){ // Memory Buffer Register
+	//MEMORY BUFFER REGISTER ------------------------------------------------------------------------
+	void* MBR(void* arg){ 
 		// initialize this thread before while(1)
+		mbr = 0;
+
 		while(1){
+			//verifies if bmr function is allowed to run
 			sem_wait(&mbr_sem);
 			
+			//mbr receives the content of the new instruction execution at this moment
+			mbr = instruction;
+
+			//now memToReg mux knows that one of its inputs were already seted
 			sem_post(&memToReg_mux_sem);
 		}
 	}
 
-	void* RegisterBank(void* arg){ // Register Bank: Contains register from 0 to 31
+	//REGISTER BANK ------------------------------------------------------------------------
+	void* RegisterBank(void* arg){ //Contains register from 0 to 31
+		
 		// initialize this thread before while(1)
 		int regs[32]; // all registers
+		
 		memset(regs,0,32*sizeof(int));
 
 		while(1){
-			sem_wait(&regBank_sem);
-			sem_wait(&regBank_sem);
-			sem_wait(&regBank_sem);
 
+			sem_wait(&regBank_sem); //IR function  has to run first
+			sem_wait(&regBank_sem); //resDst_mux has to be seted first
+			sem_wait(&regBank_sem); //memToReg_mux has to be seted first
 
-			sem_post(&a_sem);
+			//setting A and B registers:
+			a_reg = regs[instruction_25_21]; 
+			b_reg = regs[instruction_20_16];
+
+			//Verifies if control unit allows to write on register bank:
+			if (getRegWrite() == 1) {
+				
+			}
+
+			//now that 
+			sem_post(&a_sem); 
 			sem_post(&b_sem);
+			
+
 		}
 	}
 
