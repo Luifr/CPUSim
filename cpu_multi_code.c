@@ -167,6 +167,9 @@
 		
 	//value of registers
 	int a_reg=0, b_reg=0, ALUOutResult=0, ALUA=0, ALUB=0, mbr=0;
+	
+	// initialize this thread before while(1)
+	unsigned int ram[RAM_SIZE]; // o conteudo da ram
 
 
 // Global variables
@@ -282,8 +285,6 @@
 
 	//RANDOM ACCESS MEMORY ----------------------------------------------------------------------
 	void* RAM(void* arg){ 
-		// initialize this thread before while(1)
-		unsigned int ram[RAM_SIZE]; // o conteudo da ram
 
 		// load program from input file to ram
 		FILE* code = fopen((char*)arg,"r");
@@ -756,9 +757,16 @@ int main(int argc, char* argv[]){
 			sem_post(&clock_sem);
 		}
 
+		//check if program has ended
+		if(instruction == 0){
+			break;
+		}
+
 		sem_post(&cu_sem);
 
 	}
+
+	// imprimir a saida aqui
 
 
 	return 0;
