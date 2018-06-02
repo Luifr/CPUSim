@@ -1,3 +1,4 @@
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -150,7 +151,11 @@
 	// semaphores to control threads
 	sem_t clock_sem, main_sem, pc_sem, ram_sem, ir_sem, alu_sem, cu_sem, mbr_sem ;
 	sem_t regDst_mux_sem, memToReg_mux_sem, iord_mux_sem, a_sem, b_sem, regBank_sem, aluControl_sem;
+<<<<<<< HEAD
 	sem_t signExtend_sem, aluSrcA_mux_sem, aluSrcB_mux_sem, signExtend_sem, shiftLeftMuxALU_sem;
+=======
+	sem_t aluSrcA_mux_sem, aluSrcB_mux_sem, signExtend_sem, shiftLeftMuxALU_sem;
+>>>>>>> origin/brudel
 	sem_t pcSrc_mux_sem, aluOut_sem, bne_mux_sem, and_sem, or_sem, shiftLeftPCSrc_sem;
 
 	// has all the signals from CU
@@ -171,6 +176,7 @@
 //################################################################################################################################
 //Threads/Modules
 
+<<<<<<< HEAD
 	
 	// CONTROL UNIT ------------------------------------------------------------------------
 	void* CU(void* arg){ 
@@ -184,6 +190,94 @@
 	}
 
 	//PROGRAM COUNTER --------------------------------------------------------------------------------
+=======
+	// CONTROL UNIT ------------------------------------------------------------------------
+ 	void* CU(void* arg){ // Control Unit
+	 	union {
+	 		struct {
+	 			unsigned char S0 : 1;
+	 			unsigned char S1 : 1;
+	 			unsigned char S2 : 1;
+	 			unsigned char S3 : 1;
+	 		} sinais;
+			unsigned char inteiro;
+		} UC_State;
+		UC_State = 0;
+
+		union {
+			struct {
+				unsigned char RegDst0 : 1;
+				unsigned char RegDst1 : 1;
+				unsigned char RegWrite : 1;
+				unsigned char UALSrcA : 1;
+				unsigned char UALSrcB0 : 1;
+				unsigned char ALUSrcB1 : 1;
+				unsigned char ALUOp0 : 1;
+				unsigned char ALUOp1 : 1;
+				unsigned char PCSource0 : 1;
+				unsigned char PCSource1 : 1;
+				unsigned char PCWriteCond : 1;
+				unsigned char PCWrite : 1;
+				unsigned char IorD : 1;
+				unsigned char MemRead : 1;
+				unsigned char MemWrite : 1;
+				unsigned char BNE : 1;
+				unsigned char IRWrite : 1;
+				unsigned char MemtoReg0 : 1;
+				unsigned char MemtoReg1 : 1;
+			} sinais;
+			int inteiro;
+		} local;
+		local.inteiro = 0;
+
+		while(1){
+
+//jal:
+	//Estado 10 faz "j" e armazena PC em $ra
+//jr:
+	//Estado 11 escreve em pc de A
+//jarl:
+	//Estado 12 escreve em pc de A e armazena PC em $ra
+//addi:
+	//Estado 13 soma A com o imediato e MANDA PARA ESTADO 7
+//andi:
+	//Estado 14 and A com o imediato e MANDA PARA ESTADO 7 ###FALTA SINAL ESPECÍFICO PARA AND
+//bne:
+	//Estado 15 faz "beq" + sinal BNE
+			local.sinais.RegDst0 = UC_State.inteiro == 7;
+			local.sinais.RegDst1 = UC_State.inteiro == 10 || UC_State.inteiro == 12;
+			local.sinais.RegWrite = UC_State.inteiro == 4 || UC_State.inteiro == 7 || UC_State.inteiro == 10 || UC_State.inteiro == 12;
+			local.sinais.ALUSrcA = UC_State.inteiro == 2 || UC_State.inteiro == 6 || UC_State.inteiro == 8 || UC_State.inteiro == 13 || UC_State.inteiro == 14 || UC_State.inteiro == 15;
+			local.sinais.ALUSrcB0 = UC_State.inteiro == 0 || UC_State.inteiro == 1;
+			local.sinais.ALUSrcB1 = UC_State.inteiro == 1 || UC_State.inteiro == 2 || UC_State.inteiro == 13 || UC_State.inteiro == 14;
+			local.sinais.ALUOp0 = UC_State.inteiro == 8 || UC_State.inteiro == 15; //Ajustar para andi
+			local.sinais.ALUOp1 = UC_State.inteiro == 6; //Ajustar para andi
+			local.sinais.PCSource0 = UC_State.inteiro == 8 || UC_State.inteiro == 11 || UC_State.inteiro == 12 || UC_State.inteiro == 15;
+			local.sinais.PCSource1 = UC_State.inteiro == 9 || UC_State.inteiro == 10 || UC_State.inteiro == 11 || UC_State.inteiro == 12;
+			local.sinais.PCWriteCond = UC_State.inteiro == 8 || UC_State.inteiro == 15;
+			local.sinais.PCWrite = UC_State.inteiro == 0 || UC_State.inteiro == 9 || UC_State.inteiro == 10 || UC_State.inteiro == 11 || UC_State.inteiro == 12;
+			local.sinais.IorD = UC_State.inteiro == 3 || UC_State.inteiro == 5;
+			local.sinais.MemRead = UC_State.inteiro == 0 || UC_State.inteiro == 3;
+			local.sinais.MemWrite = UC_State.inteiro == 5;
+			local.sinais.BNE = UC_State.inteiro == 15;
+			local.sinais.IRWrite = UC_State.inteiro == 0;
+			local.sinais.MemtoReg0 = UC_State.inteiro == 4;
+			local.sinais.MemtoReg1 = UC_State.inteiro == 10 || UC_State.inteiro == 12;
+
+			UC_State.sinais.S0 = UC_State.inteiro == 0 || UC_State.inteiro == 6 || UC_State.inteiro == 13 || UC_State.inteiro == 14 || (UC_State.inteiro == 1 && OP == 2) || (UC_State.inteiro == 2 && OP == 43) || (UC_State.inteiro == 2 && OP == 35) || (UC_State.inteiro == 1 && OP == 20) || (UC_State.inteiro == 1 && OP == 8) || (UC_State.inteiro == 1 && OP == 5);
+			UC_State.sinais.S1 = UC_State.inteiro == 6 || UC_State.inteiro == 13 || UC_State.inteiro == 14 || (UC_State.inteiro == 1 && OP == 0) || (UC_State.inteiro == 1 && OP == 35) || (UC_State.inteiro == 1 && OP == 43) || (UC_State.inteiro == 2 && OP == 35) || (UC_State.inteiro == 1 && OP == 3) || (UC_State.inteiro == 1 && OP == 20) || (UC_State.inteiro == 1 && OP == 12) || (UC_State.inteiro == 1 && OP == 5);
+			UC_State.sinais.S2 = UC_State.inteiro == 3 || UC_State.inteiro == 6 || UC_State.inteiro == 13 || UC_State.inteiro == 14 || (UC_State.inteiro == 1 && OP == 0) || (UC_State.inteiro == 2 && OP == 43) || (UC_State.inteiro == 1 && OP == 21) || (UC_State.inteiro == 1 && OP == 8) || (UC_State.inteiro == 1 && OP == 12) || (UC_State.inteiro == 1 && OP == 5);
+			UC_State.sinais.S3 = (UC_State.inteiro == 1 && OP == 2) || (UC_State.inteiro == 1 && OP == 3) || (UC_State.inteiro == 1 && OP == 20) || (UC_State.inteiro == 1 && OP == 21) || (UC_State.inteiro == 1 && OP == 8) || (UC_State.inteiro == 1 && OP == 12) || (UC_State.inteiro == 1 && OP == 5);
+
+			sem_wait(&cu_sem);
+
+			cu_signals = local.inteiro;
+			sem_post(&pc_sem);
+		}
+	}
+
+	//PROGRAM COUNTER ------------------------------------------------------------------------
+>>>>>>> origin/brudel
 	void* PC(void* arg){ 
 		// initialize this thread before while(1)
 		int pc_local = 0; // current value of pc
@@ -200,11 +294,22 @@
 		}
 	}
 
+<<<<<<< HEAD
 	//RANDOM ACCESS MEMORY ---------------------------------------------------------------------------
 	void* RAM(void* arg){ 
 		// initialize this thread before while(1)
 		unsigned int ram[RAM_SIZE]; // o conteudo da ram
 		int iord; // get the iord signal from cu
+=======
+	//RANDOM ACCESS MEMORY ----------------------------------------------------------------------
+	void* RAM(void* arg){ 
+		// initialize this thread before while(1)
+		unsigned int ram[RAM_SIZE]; // o conteudo da ram
+
+		// load program from input file to ram
+		FILE* code = fopen((char*)arg,"r");
+		int counter = 0;
+>>>>>>> origin/brudel
 
 		// load program from input file to ram
 		FILE* code = fopen((char*)arg,"r");
@@ -231,7 +336,11 @@
 		}
 	}
 
+<<<<<<< HEAD
 	//INSTRUCTION REGISTER ---------------------------------------------------------------------------
+=======
+	//INSTRUCTION REGISTER ------------------------------------------------------------------------
+>>>>>>> origin/brudel
 	void* IR(void* arg){ 
 		// initialize this thread before while(1)
 	
@@ -251,7 +360,11 @@
 				instruction_5_0   = FUNCTION_FIELD(&instruction);
 				instruction_6_10  = SHAMT(&instruction);
 			}
+<<<<<<< HEAD
 			
+=======
+			sem_post(&memToReg_mux_sem);   //Now, the mux controlled by the UC signal MemToReg is unlocked
+>>>>>>> origin/brudel
 			sem_post(&regDst_mux_sem);     //Now, the mux controlled by the UC signal RegDst is unlocked
 			sem_post(&regBank_sem);        //...
 			sem_post(&aluControl_sem);     //...
@@ -259,7 +372,11 @@
 		}
 	}
 
+<<<<<<< HEAD
 	//MEMORY BUFFER REGISTER -------------------------------------------------------------------------
+=======
+	//MEMORY BUFFER REGISTER ------------------------------------------------------------------------
+>>>>>>> origin/brudel
 	void* MBR(void* arg){ 
 		// initialize this thread before while(1)
 		mbr = 0;
@@ -276,7 +393,11 @@
 		}
 	}
 
+<<<<<<< HEAD
 	//REGISTER BANK ----------------------------------------------------------------------------------
+=======
+	//REGISTER BANK ------------------------------------------------------------------------
+>>>>>>> origin/brudel
 	void* RegisterBank(void* arg){ //Contains register from 0 to 31
 		
 		// initialize this thread before while(1)
@@ -296,8 +417,12 @@
 
 			//Verifies if control unit allows to write on register bank:
 			if (getRegWrite() == 1) {
+<<<<<<< HEAD
 				//if so... the register defined by the RegDst Mux receives the content choosen by the MemToReg Mux
 				regs[outMuxRegDst] = outMuxMemToReg;
+=======
+				
+>>>>>>> origin/brudel
 			}
 
 			//now that 
@@ -327,15 +452,23 @@
 		muxAddressResult = 0;
 
 		while(1){
+<<<<<<< HEAD
 			sem_wait(&iord_mux_sem); //if PC function already executed
 
+=======
+			sem_wait(&iord_mux_sem);
+>>>>>>> origin/brudel
 			if (getIorD() == 0) {
 				muxAddressResult = pc;
 			} 
 			else if (getIorD() == 1) {
 				muxAddressResult = ALUOutResult;
 			}
+<<<<<<< HEAD
 			sem_post(&ram_sem); // allows RAM function to work
+=======
+			sem_post(&ram_sem);
+>>>>>>> origin/brudel
 		}
 	}
 
@@ -345,6 +478,7 @@
 		ALUA = 0;
 
 		while(1){
+<<<<<<< HEAD
 			sem_wait(&aluSrcA_mux_sem); //waits till the A_register function execute firt
 
 			if (getALUSrcA() == 0) {
@@ -355,6 +489,16 @@
 			}
 
 			sem_post(&alu_sem); //this MuxALUA function is one of the functions that allows ALU to run
+=======
+			sem_wait(&aluSrcA_mux_sem);
+			if (getALUSrcA() == 0) {
+				ALUA = pc;
+			}
+			else if (getALUSrcA() == 1) {
+				ALUA = a_reg;
+			}
+			sem_post(&alu_sem);
+>>>>>>> origin/brudel
 		}
 	}
 
@@ -364,11 +508,18 @@
 		ALUB = 0;
 
 		while(1){
+<<<<<<< HEAD
 			sem_wait(&aluSrcB_mux_sem); // B() (B register function) has to allow this mux function to execute
 			sem_wait(&aluSrcB_mux_sem); // Shiftleft2ALU() has to allow this mux function to execute
 
 			if (getALUSrcB() == 0) {
 				ALUB = b_reg; 
+=======
+			sem_wait(&aluSrcB_mux_sem);
+			sem_wait(&aluSrcB_mux_sem);
+			if (getALUSrcB() == 0) {
+				ALUB = b_reg;
+>>>>>>> origin/brudel
 			}
 			else if (getALUSrcB() == 1) {
 				ALUB = 4;
@@ -379,8 +530,12 @@
 			else if (getALUSrcB() == 3) { 
 				ALUB = shiftLeftMuxALU;
 			}
+<<<<<<< HEAD
 
 			sem_post(&alu_sem); //this MuxALUA function is one of the functions that allows ALU to run
+=======
+			sem_post(&alu_sem);
+>>>>>>> origin/brudel
 		}
 	}
 
@@ -389,16 +544,25 @@
 		// initialize this thread before while(1)
 		outMuxBNE = 0;
 
+<<<<<<< HEAD
 		while(1){	
 			sem_wait(&bne_mux_sem); //waits until MuxPCSource() function allows it to execute 
 
+=======
+		while(1){
+			sem_wait(&bne_mux_sem);
+>>>>>>> origin/brudel
 			if (getBNE() == 0) {
 				outMuxBNE = 0;
 			} 
 			else if (getBNE() == 1) {
 				outMuxBNE = 1;
 			}
+<<<<<<< HEAD
 			sem_post(&cu_sem); //allows UC function to run
+=======
+			sem_post(&cu_sem);
+>>>>>>> origin/brudel
 		}
 	}
 
@@ -408,9 +572,14 @@
 		muxToPc = 0;
 
 		while(1){
+<<<<<<< HEAD
 			sem_wait(&pcSrc_mux_sem); //waits until Shiftleft2PCSource() function allows it to execute 
 			sem_wait(&pcSrc_mux_sem); //waits until ALUout function also allows it to execute
 
+=======
+			sem_wait(&pcSrc_mux_sem);
+			sem_wait(&pcSrc_mux_sem);
+>>>>>>> origin/brudel
 			if (getPCSource() == 0) {
 				muxToPc = ALUResult;
 			}
@@ -423,8 +592,12 @@
 			else if (getPCSource() == 3) {
 				muxToPc = a_reg;
 			}
+<<<<<<< HEAD
 
 			sem_wait(&bne_mux_sem); // allows MuxBNE function to run
+=======
+			sem_wait(&bne_mux_sem);
+>>>>>>> origin/brudel
 		}
 	}
 
@@ -432,10 +605,16 @@
 	void* ALUControl(void* arg){
 		// initialize this thread before while(1)
 		while(1){
+<<<<<<< HEAD
 			sem_wait(&aluControl_sem);
 
 
 			sem_post(&alu_sem);
+=======
+		sem_wait(&aluControl_sem);
+			
+		sem_post(&alu_sem);
+>>>>>>> origin/brudel
 		}
 	}
 
@@ -445,8 +624,12 @@
 		outMuxRegDst = 0;
 
 		while(1){
+<<<<<<< HEAD
 			sem_wait(&regDst_mux_sem); //waits till IR function allows this function to execute
 
+=======
+			sem_wait(&regDst_mux_sem);
+>>>>>>> origin/brudel
 			if (getRegDst() == 0) {
 				outMuxRegDst = instruction_20_16;
 			}
@@ -456,7 +639,11 @@
 			else if (getRegDst() == 2) {
 				outMuxRegDst = 31;
 			}
+<<<<<<< HEAD
 			sem_post(&regBank_sem); // allows RegisterBank() function to execute
+=======
+			sem_post(&regBank_sem);
+>>>>>>> origin/brudel
 		}
 	}
 
@@ -466,6 +653,7 @@
 		outMuxMemToReg = 0;
 
 		while(1){
+<<<<<<< HEAD
 			sem_wait(&memToReg_mux_sem); // waits till MBR() allows it to run
 
 			if (getMemtoReg() == 0) {
@@ -477,6 +665,21 @@
 			}
 
 			sem_post(&regBank_sem); // allows RegisterBank() to execute
+=======
+			sem_wait(&memToReg_mux_sem);
+			sem_wait(&memToReg_mux_sem);
+			if (getMemtoReg() == 0) {
+				sem_wait(&clock_sem);
+				outMuxMemToReg = ALUOutResult;
+			} else if (getMemtoReg() == 1) {
+				sem_wait(&clock_sem);
+				//outMuxMemToReg = mdr;
+			} else if (getMemtoReg() == 2) {
+				sem_wait(&clock_sem);
+				outMuxMemToReg = pc;
+			}
+			sem_post(&regBank_sem);
+>>>>>>> origin/brudel
 		}
 	}
 
@@ -486,9 +689,15 @@
 		a_reg = 0;
 
 		while(1){
+<<<<<<< HEAD
 			sem_wait(&a_sem); //waits for RegisterBanks() allows it to run (even if there's nothing here....)
 
 			sem_post(&aluSrcA_mux_sem); //allows this mux to execute
+=======
+			sem_wait(&a_sem);
+
+			sem_post(&aluSrcA_mux_sem);
+>>>>>>> origin/brudel
 		}
 	}
 
@@ -498,9 +707,15 @@
 		b_reg = 0;
 
 		while(1){
+<<<<<<< HEAD
 			sem_wait(&b_sem); //waits for RegisterBanks() allows it to run (even if there's nothing here....)
 
 			sem_post(&aluSrcB_mux_sem); //allows this mux to execute
+=======
+			sem_wait(&b_sem);
+
+			sem_post(&aluSrcB_mux_sem);
+>>>>>>> origin/brudel
 		}
 	}
 
@@ -531,11 +746,17 @@
 		// initialize this thread before while(1)
 
 		while(1){
+<<<<<<< HEAD
 			sem_wait(&shiftLeftMuxALU_sem); // waits till SignExtend() fucntion allows it to execute
 
 			shiftLeftMuxALU = signExtendOut << 2;
 			
 			sem_post(aluSrcB_mux_sem); //allows MuxALUB() to run
+=======
+			sem_wait(&shiftLeftMuxALU_sem);
+			shiftLeftMuxALU = signExtendOut << 2;
+			sem_post(aluSrcB_mux_sem);
+>>>>>>> origin/brudel
 		}
 	}
 
@@ -544,12 +765,19 @@
 		// initialize this thread before while(1)
 
 		while(1){
+<<<<<<< HEAD
 			sem_wait(&shiftLeftPCSrc_sem); //waits till IR allows it to run
 
 			shiftLeftMuxPCSource = instruction_25_0 << 2;
 			//concatenar com PC[31-28]
 
 			sem_wait(&pcSrc_mux_sem); //allows MuxPCSource() to run
+=======
+			sem_wait(&shiftLeftPCSrc_sem);
+			shiftLeftMuxPCSource = instruction_25_0 << 2;
+			//concatenar com PC[31-28]
+			sem_wait(&pcSrc_mux_sem);
+>>>>>>> origin/brudel
 		}
 	}
 
@@ -560,15 +788,24 @@
 		andToOr = 0;
 
 		while(1){
+<<<<<<< HEAD
 			sem_wait(&and_sem); //waits until CU() (control unit) allows it to run
 
 			if (getPCWriteCond() == 1 && outMuxBNE == 1) {
+=======
+			sem_wait(&and_sem);
+			if (getPCWriteCond() && outMuxBNE) {
+>>>>>>> origin/brudel
 				andToOr = 1;
 			} else {
 				andToOr = 0;
 			}
+<<<<<<< HEAD
 
 			sem_post(&or_sem); //allows OR() to execute
+=======
+			sem_post(&or_sem);
+>>>>>>> origin/brudel
 		}
 	}
 
@@ -578,15 +815,24 @@
 		orToPc = 0;
 
 		while(1){
+<<<<<<< HEAD
 			sem_wait(&or_sem); //waits till AND function runs first
 		
 			if (getPCWrite() == 1 && andToOr == 1) {
+=======
+			sem_wait(&or_sem);
+			if (getPCWrite() && andToOr) {
+>>>>>>> origin/brudel
 				orToPc = 1;
 			} else {
 				orToPc = 0;
 		
 			}
+<<<<<<< HEAD
 			sem_post(&pc_sem);//allows writting in pc
+=======
+			sem_post(&pc_sem);
+>>>>>>> origin/brudel
 		}
 	}
 
@@ -604,7 +850,31 @@ int main(int argc, char* argv[]){
 	pthread_t pc_th,ir_th,ram_th,mbr_th,registerbank_th,alu_th,muxiord_th,muxalua_th,muxalub_th,muxbne_th,and_th,or_th;
 	pthread_t muxpcsource_th,cu_th,alucontrol_th,muxregdst_th,muxmemtoreg_th,a_th,b_th,aluout_th,signextend_th,shiftleft2alu_th,shiftleft2pcsource_th;
 
+	// initialises all semaphores
 	sem_init(&clock_sem,0,0);
+	sem_init(&pc_sem,0,0);
+	sem_init(&ram_sem,0,0);
+	sem_init(&ir_sem,0,0);
+	sem_init(&alu_sem,0,0);
+	sem_init(&cu_sem,0,0);
+	sem_init(&mbr_sem,0,0);
+	sem_init(&regDst_mux_sem,0,0);
+	sem_init(&memToReg_mux_sem,0,0);
+	sem_init(&iord_mux_sem,0,0);
+	sem_init(&a_sem,0,0);
+	sem_init(&b_sem,0,0);
+	sem_init(&regBank_sem,0,0);
+	sem_init(&aluControl_sem,0,0);
+	sem_init(&signExtend_sem,0,0);
+	sem_init(&aluSrcA_mux_sem,0,0);
+	sem_init(&aluSrcB_mux_sem,0,0);
+	sem_init(&shiftLeftMuxALU_sem,0,0);
+	sem_init(&shiftLeftPCSrc_sem,0,0);
+	sem_init(&pcSrc_mux_sem,0,0);
+	sem_init(&aluOut_sem,0,0);
+	sem_init(&bne_mux_sem,0,0);
+	sem_init(&and_sem,0,0);
+	sem_init(&or_sem,0,0);
 
 	// initialises all modules
 	pthread_create(&pc_th,NULL,PC,NULL);
