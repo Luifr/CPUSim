@@ -1,3 +1,4 @@
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -172,13 +173,87 @@
 //Threads/Modules
 
 	// CONTROL UNIT ------------------------------------------------------------------------
-	void* CU(void* arg){ 
-		// initialize this thread before while(1)
-		
+ 	void* CU(void* arg){ // Control Unit
+	 	union {
+	 		struct {
+	 			unsigned char S0 : 1;
+	 			unsigned char S1 : 1;
+	 			unsigned char S2 : 1;
+	 			unsigned char S3 : 1;
+	 		} sinais;
+			unsigned char inteiro;
+		} UC_State;
+		UC_State = 0;
+
+		union {
+			struct {
+				unsigned char RegDst0 : 1;
+				unsigned char RegDst1 : 1;
+				unsigned char RegWrite : 1;
+				unsigned char UALSrcA : 1;
+				unsigned char UALSrcB0 : 1;
+				unsigned char ALUSrcB1 : 1;
+				unsigned char ALUOp0 : 1;
+				unsigned char ALUOp1 : 1;
+				unsigned char PCSource0 : 1;
+				unsigned char PCSource1 : 1;
+				unsigned char PCWriteCond : 1;
+				unsigned char PCWrite : 1;
+				unsigned char IorD : 1;
+				unsigned char MemRead : 1;
+				unsigned char MemWrite : 1;
+				unsigned char BNE : 1;
+				unsigned char IRWrite : 1;
+				unsigned char MemtoReg0 : 1;
+				unsigned char MemtoReg1 : 1;
+			} sinais;
+			int inteiro;
+		} local;
+		local.inteiro = 0;
+
 		while(1){
+
+//jal:
+	//Estado 10 faz "j" e armazena PC em $ra
+//jr:
+	//Estado 11 escreve em pc de A
+//jarl:
+	//Estado 12 escreve em pc de A e armazena PC em $ra
+//addi:
+	//Estado 13 soma A com o imediato e MANDA PARA ESTADO 7
+//andi:
+	//Estado 14 and A com o imediato e MANDA PARA ESTADO 7 ###FALTA SINAL ESPECÍFICO PARA AND
+//bne:
+	//Estado 15 faz "beq" + sinal BNE
+			local.sinais.RegDst0 = UC_State.inteiro == 7;
+			local.sinais.RegDst1 = UC_State.inteiro == 10 || UC_State.inteiro == 12;
+			local.sinais.RegWrite = UC_State.inteiro == 4 || UC_State.inteiro == 7 || UC_State.inteiro == 10 || UC_State.inteiro == 12;
+			local.sinais.ALUSrcA = UC_State.inteiro == 2 || UC_State.inteiro == 6 || UC_State.inteiro == 8 || UC_State.inteiro == 13 || UC_State.inteiro == 14 || UC_State.inteiro == 15;
+			local.sinais.ALUSrcB0 = UC_State.inteiro == 0 || UC_State.inteiro == 1;
+			local.sinais.ALUSrcB1 = UC_State.inteiro == 1 || UC_State.inteiro == 2 || UC_State.inteiro == 13 || UC_State.inteiro == 14;
+			local.sinais.ALUOp0 = UC_State.inteiro == 8 || UC_State.inteiro == 15; //Ajustar para andi
+			local.sinais.ALUOp1 = UC_State.inteiro == 6; //Ajustar para andi
+			local.sinais.PCSource0 = UC_State.inteiro == 8 || UC_State.inteiro == 11 || UC_State.inteiro == 12 || UC_State.inteiro == 15;
+			local.sinais.PCSource1 = UC_State.inteiro == 9 || UC_State.inteiro == 10 || UC_State.inteiro == 11 || UC_State.inteiro == 12;
+			local.sinais.PCWriteCond = UC_State.inteiro == 8 || UC_State.inteiro == 15;
+			local.sinais.PCWrite = UC_State.inteiro == 0 || UC_State.inteiro == 9 || UC_State.inteiro == 10 || UC_State.inteiro == 11 || UC_State.inteiro == 12;
+			local.sinais.IorD = UC_State.inteiro == 3 || UC_State.inteiro == 5;
+			local.sinais.MemRead = UC_State.inteiro == 0 || UC_State.inteiro == 3;
+			local.sinais.MemWrite = UC_State.inteiro == 5;
+			local.sinais.BNE = UC_State.inteiro == 15;
+			local.sinais.IRWrite = UC_State.inteiro == 0;
+			local.sinais.MemtoReg0 = UC_State.inteiro == 4;
+			local.sinais.MemtoReg1 = UC_State.inteiro == 10 || UC_State.inteiro == 12;
+
+			UC_State.sinais.S0 = UC_State.inteiro == 0 || UC_State.inteiro == 6 || UC_State.inteiro == 13 || UC_State.inteiro == 14 || (UC_State.inteiro == 1 && OP == 2) || (UC_State.inteiro == 2 && OP == 43) || (UC_State.inteiro == 2 && OP == 35) || (UC_State.inteiro == 1 && OP == 20) || (UC_State.inteiro == 1 && OP == 8) || (UC_State.inteiro == 1 && OP == 5);
+			UC_State.sinais.S1 = UC_State.inteiro == 6 || UC_State.inteiro == 13 || UC_State.inteiro == 14 || (UC_State.inteiro == 1 && OP == 0) || (UC_State.inteiro == 1 && OP == 35) || (UC_State.inteiro == 1 && OP == 43) || (UC_State.inteiro == 2 && OP == 35) || (UC_State.inteiro == 1 && OP == 3) || (UC_State.inteiro == 1 && OP == 20) || (UC_State.inteiro == 1 && OP == 12) || (UC_State.inteiro == 1 && OP == 5);
+			UC_State.sinais.S2 = UC_State.inteiro == 3 || UC_State.inteiro == 6 || UC_State.inteiro == 13 || UC_State.inteiro == 14 || (UC_State.inteiro == 1 && OP == 0) || (UC_State.inteiro == 2 && OP == 43) || (UC_State.inteiro == 1 && OP == 21) || (UC_State.inteiro == 1 && OP == 8) || (UC_State.inteiro == 1 && OP == 12) || (UC_State.inteiro == 1 && OP == 5);
+			UC_State.sinais.S3 = (UC_State.inteiro == 1 && OP == 2) || (UC_State.inteiro == 1 && OP == 3) || (UC_State.inteiro == 1 && OP == 20) || (UC_State.inteiro == 1 && OP == 21) || (UC_State.inteiro == 1 && OP == 8) || (UC_State.inteiro == 1 && OP == 12) || (UC_State.inteiro == 1 && OP == 5);
+
 			sem_wait(&cu_sem);
 
-			sem_post(&and_sem);
+			cu_signals = local.inteiro;
+			sem_post(&pc_sem);
 		}
 	}
 
