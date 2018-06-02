@@ -162,8 +162,8 @@
 	int pc=0, muxAddressResult=0, memData=0, writeData=0, memDataRegister=0;
 	int instruction_15_0=0, instruction_20_16=0, instruction_25_21=0, instruction_31_26=0, instruction_15_11=0, instruction_6_10=0, instruction_5_0=0, instruction_25_0=0;
 	int signExtendOut=0, shiftLeftMuxALU=0, shiftLeftMuxPCSource=0;
-	int outMuxBNE=0, andToOr=0, orToPc=0, muxToPc=0, outMuxRegDst=0, outMuxMemToReg=0, ALUResult=0;
-	int instruction;
+	int outMuxBNE=0, andToOr=0, orToPc=0, muxToPc=0, outMuxRegDst=0, outMuxMemToReg=0;
+	int instruction,ALUResult=0,ZERO=0,a_reg_signal=0,b_reg_signal=0;
 		
 	//value of registers
 	int a_reg=0, b_reg=0, ALUOutResult=0, ALUA=0, ALUB=0, mbr=0;
@@ -264,14 +264,19 @@
 		int pc_local = 0; // current value of pc
 
 		while(1){
+
 			sem_wait(&pc_sem); // it waits for the semaphore to allow it to run
+
 			pc_local += 4; // points to next instruction
 			if(orToPc == 1){ // if condition to write in pc
 				pc_local = muxToPc; // overwrite pc with adress location
 			}
+
 			sem_post(&iord_mux_sem); // start next modules
+			
 			sem_wait(&clock_sem);
 			pc = pc_local; // update global pc value after clock
+		
 		}
 	}
 
@@ -292,14 +297,19 @@
 			counter++;
 		}
 
+		fclose(code);
+
 		while(1){
+
 			sem_wait(&ram_sem);
+
 			if(getMemRead() == 1){
 				instruction = ram[muxAddressResult/4];
 			}
 			else if(getMemWrite() == 1){
 				ram[muxAddressResult/4] = b_reg;
 			}
+
 			sem_post(&ir_sem);
 			sem_post(&mbr_sem);
 		}
@@ -312,10 +322,15 @@
 		while(1){
 			
 			sem_wait(&ir_sem);    
-			//sem_wait(&clock_sem); 
 
+			sem_post(&memToReg_mux_sem);   //Now, the mux controlled by the UC signal MemToReg is unlocked
+			sem_post(&regDst_mux_sem);     //Now, the mux controlled by the UC signal RegDst is unlocked
+			sem_post(&regBank_sem);        //...
+			sem_post(&aluControl_sem);     //...
+			sem_post(&shiftLeftPCSrc_sem); //...
+
+			sem_wait(&clock_sem);
 			if(getIRWrite() == 1){
-
 				instruction_31_26 = OPCODE(&instruction); 
 				instruction_25_21 = RS(&instruction);    
 				instruction_20_16 = RT(&instruction);
@@ -325,11 +340,7 @@
 				instruction_5_0   = FUNCTION_FIELD(&instruction);
 				instruction_6_10  = SHAMT(&instruction);
 			}
-			sem_post(&memToReg_mux_sem);   //Now, the mux controlled by the UC signal MemToReg is unlocked
-			sem_post(&regDst_mux_sem);     //Now, the mux controlled by the UC signal RegDst is unlocked
-			sem_post(&regBank_sem);        //...
-			sem_post(&aluControl_sem);     //...
-			sem_post(&shiftLeftPCSrc_sem); //...
+
 		}
 	}
 
@@ -342,11 +353,12 @@
 			//verifies if bmr function is allowed to run
 			sem_wait(&mbr_sem);
 			
-			//mbr receives the content of the new instruction execution at this moment
-			mbr = instruction;
-
 			//now memToReg mux knows that one of its inputs were already seted
 			sem_post(&memToReg_mux_sem);
+
+			//mbr receives the content of the new instruction execution at this moment
+			sem_wait(&clock_sem);
+			mbr = instruction;
 		}
 	}
 
@@ -365,26 +377,27 @@
 			sem_wait(&regBank_sem); //memToReg_mux has to be seted first
 
 			//setting A and B registers:
-			a_reg = regs[instruction_25_21]; 
-			b_reg = regs[instruction_20_16];
-
-			//Verifies if control unit allows to write on register bank:
-			if (getRegWrite() == 1) {
-				
-			}
+			a_reg_signal = regs[instruction_25_21]; 
+			b_reg_signal = regs[instruction_20_16];
 
 			//now that 
 			sem_post(&a_sem); 
 			sem_post(&b_sem);
 			
+			//Verifies if control unit allows to write on register bank:
+			sem_wait(&clock_sem);
+			if (getRegWrite() == 1) {
+				regs[outMuxRegDst] = outMuxMemToReg;
+			}
 
 		}
 	}
 
-	void* ALU(void* arg){ // Arithmetic Logic Unit
+	void* ALU(void* arg){ // Arithmetic Logic Unit   ///////// FALTA ISSO //////////////
 		// initialize this thread before while(1)
 
 		while(1){
+
 			sem_wait(&alu_sem);
 			sem_wait(&alu_sem);
 			sem_wait(&alu_sem);
@@ -397,11 +410,12 @@
 		// initialize this thread before while(1)
 
 		while(1){
+
 			sem_wait(&iord_mux_sem);
 			if (getIorD() == 0) {
 				muxAddressResult = pc;
 			} 
-			else if (getIorD() == 1) {
+			else{
 				muxAddressResult = ALUOutResult;
 			}
 			sem_post(&ram_sem);
@@ -411,38 +425,44 @@
 
 	void* MuxALUA(void* arg){
 		// initialize this thread before while(1)
-
 		while(1){
+
 			sem_wait(&aluSrcA_mux_sem);
+
 			if (getALUSrcA() == 0) {
 				ALUA = pc;
 			}
-			else if (getALUSrcA() == 1) {
+			else {
 				ALUA = a_reg;
 			}
+
 			sem_post(&alu_sem);
 		}
 	}
 
 	void* MuxALUB(void* arg){
 		// initialize this thread before while(1)
-
+		int alub;
 		while(1){
+
 			sem_wait(&aluSrcB_mux_sem);
 			sem_wait(&aluSrcB_mux_sem);
-			if (getALUSrcB() == 0) {
+			alub = getALUSrcB();
+
+			if (alub == 0) {
 				ALUB = b_reg;
 			}
-			else if (getALUSrcB() == 1) {
+			else if (alub == 1) {
 				ALUB = 4;
 			}
-			else if (getALUSrcB() == 2) {
+			else if (alub == 2) {
 				ALUB = signExtendOut;
 			}
-			else if (getALUSrcB() == 3) { 
+			else if (alub == 3) { 
 				ALUB = shiftLeftMuxALU;
 			}
 			sem_post(&alu_sem);
+
 		}
 	}
 
@@ -450,82 +470,98 @@
 		// initialize this thread before while(1)
 
 		while(1){
+
 			sem_wait(&bne_mux_sem);
+
 			if (getBNE() == 0) {
-				outMuxBNE = 0;
+				outMuxBNE = (ZERO == 1);
 			} 
-			else if (getBNE() == 1) {
-				outMuxBNE = 1;
+			else { 
+				outMuxBNE = (!ZERO == 1);
 			}
-			sem_post(&cu_sem);
+
+			sem_post(&main_sem);
 		}
 	}
 
 	void* MuxPCSource(void* arg){
 		// initialize this thread before while(1)
-
+		int pcsrc=0;
 		while(1){
 			sem_wait(&pcSrc_mux_sem);
 			sem_wait(&pcSrc_mux_sem);
-			if (getPCSource() == 0) {
+			pcsrc = getPCSource();
+
+			if (pcsrc == 0) {
 				muxToPc = ALUResult;
 			}
-			else if (getPCSource() == 1) {
+			else if (pcsrc == 1) {
 				muxToPc = ALUOutResult;
 			}
-			else if (getPCSource() == 2) {
+			else if (pcsrc == 2) {
 				muxToPc = shiftLeftMuxPCSource;
 			}
-			else if (getPCSource() == 3) {
+			else if (pcsrc == 3) {
 				muxToPc = a_reg;
 			}
+
 			sem_wait(&bne_mux_sem);
+
 		}
 	}
 
-	void* ALUControl(void* arg){
+	void* ALUControl(void* arg){ // FALTA ISSO ////////////////////////////////////
 		// initialize this thread before while(1)
 		while(1){
-		sem_wait(&aluControl_sem);
-			
-		sem_post(&alu_sem);
+
+			sem_wait(&aluControl_sem);
+				
+			sem_post(&alu_sem);
+
 		}
 	}
 
 	void* MuxRegDst(void* arg){
 		// initialize this thread before while(1)
-
+		int regdst=0;
 		while(1){
+
 			sem_wait(&regDst_mux_sem);
-			if (getRegDst() == 0) {
+
+			regdst=getRegDst();
+			if (regdst == 0) {
 				outMuxRegDst = instruction_20_16;
-			}
-			else if (getRegDst() == 1) {
+			}			
+			else if (regdst == 1) {
 				outMuxRegDst = instruction_15_11;
-			}
-			else if (getRegDst() == 2) {
+			}			
+			else if (regdst == 2) {
 				outMuxRegDst = 31;
 			}
+
 			sem_post(&regBank_sem);
 		}
 	}
 
 	void* MuxMemtoReg(void* arg){
 		// initialize this thread before while(1)
-
+		int memtoreg=0;
 		while(1){
+
 			sem_wait(&memToReg_mux_sem);
 			sem_wait(&memToReg_mux_sem);
-			if (getMemtoReg() == 0) {
-				sem_wait(&clock_sem);
+
+			memtoreg = getMemtoReg();
+			if (memtoreg == 0) {
 				outMuxMemToReg = ALUOutResult;
-			} else if (getMemtoReg() == 1) {
-				sem_wait(&clock_sem);
-				//outMuxMemToReg = mdr;
-			} else if (getMemtoReg() == 2) {
-				sem_wait(&clock_sem);
+			} 
+			else if (memtoreg == 1) {
+				outMuxMemToReg = mbr;
+			} 
+			else if (memtoreg == 2) {
 				outMuxMemToReg = pc;
 			}
+
 			sem_post(&regBank_sem);
 		}
 	}
@@ -534,9 +570,13 @@
 		// initialize this thread before while(1)
 
 		while(1){
+
 			sem_wait(&a_sem);
 
 			sem_post(&aluSrcA_mux_sem);
+
+			sem_wait(&clock_sem);
+			a_reg = a_reg_signal;
 		}
 	}
 
@@ -544,9 +584,13 @@
 		// initialize this thread before while(1)
 
 		while(1){
+
 			sem_wait(&b_sem);
 
 			sem_post(&aluSrcB_mux_sem);
+
+			sem_wait(&clock_sem);
+			b_reg = b_reg_signal;
 		}
 	}
 
@@ -554,25 +598,33 @@
 		// initialize this thread before while(1)
 
 		while(1){
+
 			sem_wait(&aluOut_sem);
 
 			sem_post(&pcSrc_mux_sem);
+
+			sem_wait(&clock_sem);
+			ALUOutResult = ALUResult;
+
 		}
 	}
 
 	void* SignExtend(void* arg){
 		// initialize this thread before while(1)
-
+	
 		while(1){
+
 			sem_wait(&signExtend_sem);
 			signExtendOut = instruction_15_0;
-			if(TestBit(&(signExtendOut+15) == 1){
+			if(TestBit(&signExtendOut,15) == 1){
 				SetBits(&signExtendOut,16,0b1111111111111111,16);
 			}
 			else{
 				SetBits(&signExtendOut,16,0,16);
 			}
+
 			sem_post(&shiftLeftMuxALU_sem);
+
 		}	
 	}
 
@@ -580,6 +632,7 @@
 		// initialize this thread before while(1)
 
 		while(1){
+
 			sem_wait(&shiftLeftMuxALU_sem);
 			shiftLeftMuxALU = signExtendOut << 2;
 			sem_post(&aluSrcB_mux_sem);
@@ -590,6 +643,7 @@
 		// initialize this thread before while(1)
 
 		while(1){
+
 			sem_wait(&shiftLeftPCSrc_sem);
 			shiftLeftMuxPCSource = instruction_25_0 << 2;
 			//concatenar com PC[31-28]
@@ -602,6 +656,7 @@
 		// initialize this thread before while(1)
 
 		while(1){
+
 			sem_wait(&and_sem);
 			if (getPCWriteCond() && outMuxBNE) {
 				andToOr = 1;
@@ -616,6 +671,7 @@
 		// initialize this thread before while(1)
 
 		while(1){
+
 			sem_wait(&or_sem);
 			if (getPCWrite() || andToOr) {
 				orToPc = 1;
@@ -642,6 +698,7 @@ int main(int argc, char* argv[]){
 
 	// initialises all semaphores
 	sem_init(&clock_sem,0,0);
+	sem_init(&main_sem,0,0);
 	sem_init(&pc_sem,0,0);
 	sem_init(&ram_sem,0,0);
 	sem_init(&ir_sem,0,0);
@@ -692,9 +749,14 @@ int main(int argc, char* argv[]){
 	pthread_create(&or_th,NULL,OR,NULL);
 
 	while(1){
-		// aqui fic ao controle dos modulos, ou nos proprios modulos
-		// provavelmente por meio do clock
-		sem_post(clock_sem);
+		
+		sem_wait(&main_sem);
+		
+		for(int i=0; i < 7 ; i++){
+			sem_post(&clock_sem);
+		}
+
+		sem_post(&cu_sem);
 
 	}
 
