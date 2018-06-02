@@ -27,15 +27,16 @@
 		return ((B[ pos / INT ] & (1 << (pos % INT))) != 0 ) ;
 	}
 
-	void SetBits( int* B, int pos, int* A, int size){
-		for(int i = 0; i < size ; i ++){
-			if(A[i] == 1){
+	void SetBits( int* B, int pos, int A, int size){
+		size+=pos;
+		for(int i = pos, j = 0; i < size ; i++, j++){
+			if(TestBit(&A,i) == 1){
 				//SetBit(B,i);
-				B[ i / INT ] |= 1 << (i % INT);
+				B[ pos / INT ] |= 1 << (j % INT);
 			}
 			else{
 				//ClearBit(B,i);
-				B[ i / INT ] &= ~(1 << (i % INT));
+				B[ pos / INT ] &= ~(1 << (j % INT));
 			}
 		}
 	}
@@ -91,20 +92,20 @@
 	#define getMemtoReg() TestBits(&cu_signals,17,2)
 
 	// CU Set Signals
-	#define setRegDst(vec_num) SetBits(&cu_signals,0,vec_num,2)
-	#define setRegWrite(vec_num) SetBits(&cu_signals,2,vec_num,1)
-	#define setALUSrcA(vec_num) SetBits(&cu_signals,3,vec_num,1)
-	#define setALUSrcB(vec_num) SetBits(&cu_signals,4,vec_num,2)
-	#define setALUOp(vec_num) SetBits(&cu_signals,6,vec_num,2)
-	#define setPCSource(vec_num) SetBits(&cu_signals,8,vec_num,2)
-	#define setPCWriteCond(vec_num) SetBits(&cu_signals,10,vec_num,1)
-	#define setPCWrite(vec_num) SetBits(&cu_signals,11,vec_num,1)
-	#define setIorD(vec_num) SetBits(&cu_signals,12,vec_num,1)
-	#define setMemRead(vec_num) SetBits(&cu_signals,13,vec_num,1)
-	#define setMemWrite(vec_num) SetBits(&cu_signals,14,vec_num,1)
-	#define setBNE(vec_num) SetBits(&cu_signals,15,vec_num,1)
-	#define setIRWrite(vec_num) SetBits(&cu_signals,16,vec_num,1)
-	#define setMemtoReg(vec_num) SetBits(&cu_signals,17,vec_num,2)
+	#define setRegDst(num) SetBits(&cu_signals,0,num,2)
+	#define setRegWrite(num) SetBits(&cu_signals,2,num,1)
+	#define setALUSrcA(num) SetBits(&cu_signals,3,num,1)
+	#define setALUSrcB(num) SetBits(&cu_signals,4,num,2)
+	#define setALUOp(num) SetBits(&cu_signals,6,num,2)
+	#define setPCSource(num) SetBits(&cu_signals,8,num,2)
+	#define setPCWriteCond(num) SetBits(&cu_signals,10,num,1)
+	#define setPCWrite(num) SetBits(&cu_signals,11,num,1)
+	#define setIorD(num) SetBits(&cu_signals,12,num,1)
+	#define setMemRead(num) SetBits(&cu_signals,13,num,1)
+	#define setMemWrite(num) SetBits(&cu_signals,14,num,1)
+	#define setBNE(num) SetBits(&cu_signals,15,num,1)
+	#define setIRWrite(num) SetBits(&cu_signals,16,num,1)
+	#define setMemtoReg(num) SetBits(&cu_signals,17,num,2)
 
 	// Registers
 	#define $zero 0
@@ -158,14 +159,14 @@
 	int cu_signals = 0;
 
 	// connections
-	int pc, muxAddressResult, memData, writeData, memDataRegister;
-	int instruction_15_0, instruction_20_16, instruction_25_21, instruction_31_26, instruction_15_11, instruction_6_10, instruction_5_0, instruction_25_0;
-	int signExtendOut, shiftLeftMuxALU, shiftLeftMuxPCSource;
-	int outMuxBNE, andToOr, orToPc, muxToPc, outMuxRegDst, outMuxMemToReg, ALUResult;
+	int pc=0, muxAddressResult=0, memData=0, writeData=0, memDataRegister=0;
+	int instruction_15_0=0, instruction_20_16=0, instruction_25_21=0, instruction_31_26=0, instruction_15_11=0, instruction_6_10=0, instruction_5_0=0, instruction_25_0=0;
+	int signExtendOut=0, shiftLeftMuxALU=0, shiftLeftMuxPCSource=0;
+	int outMuxBNE=0, andToOr=0, orToPc=0, muxToPc=0, outMuxRegDst=0, outMuxMemToReg=0, ALUResult=0;
 	int instruction;
 		
 	//value of registers
-	int a_reg, b_reg, ALUOutResult, ALUA, ALUB, mbr;
+	int a_reg=0, b_reg=0, ALUOutResult=0, ALUA=0, ALUB=0, mbr=0;
 
 
 // Global variables
@@ -183,15 +184,15 @@
 	 		} sinais;
 			unsigned char inteiro;
 		} UC_State;
-		UC_State = 0;
+		UC_State.inteiro = 0;
 
 		union {
 			struct {
 				unsigned char RegDst0 : 1;
 				unsigned char RegDst1 : 1;
 				unsigned char RegWrite : 1;
-				unsigned char UALSrcA : 1;
-				unsigned char UALSrcB0 : 1;
+				unsigned char ALUSrcA : 1;
+				unsigned char ALUSrcB0 : 1;
 				unsigned char ALUSrcB1 : 1;
 				unsigned char ALUOp0 : 1;
 				unsigned char ALUOp1 : 1;
@@ -245,15 +246,15 @@
 			local.sinais.MemtoReg0 = UC_State.inteiro == 4;
 			local.sinais.MemtoReg1 = UC_State.inteiro == 10 || UC_State.inteiro == 12;
 
-			UC_State.sinais.S0 = UC_State.inteiro == 0 || UC_State.inteiro == 6 || UC_State.inteiro == 13 || UC_State.inteiro == 14 || (UC_State.inteiro == 1 && OP == 2) || (UC_State.inteiro == 2 && OP == 43) || (UC_State.inteiro == 2 && OP == 35) || (UC_State.inteiro == 1 && OP == 20) || (UC_State.inteiro == 1 && OP == 8) || (UC_State.inteiro == 1 && OP == 5);
-			UC_State.sinais.S1 = UC_State.inteiro == 6 || UC_State.inteiro == 13 || UC_State.inteiro == 14 || (UC_State.inteiro == 1 && OP == 0) || (UC_State.inteiro == 1 && OP == 35) || (UC_State.inteiro == 1 && OP == 43) || (UC_State.inteiro == 2 && OP == 35) || (UC_State.inteiro == 1 && OP == 3) || (UC_State.inteiro == 1 && OP == 20) || (UC_State.inteiro == 1 && OP == 12) || (UC_State.inteiro == 1 && OP == 5);
-			UC_State.sinais.S2 = UC_State.inteiro == 3 || UC_State.inteiro == 6 || UC_State.inteiro == 13 || UC_State.inteiro == 14 || (UC_State.inteiro == 1 && OP == 0) || (UC_State.inteiro == 2 && OP == 43) || (UC_State.inteiro == 1 && OP == 21) || (UC_State.inteiro == 1 && OP == 8) || (UC_State.inteiro == 1 && OP == 12) || (UC_State.inteiro == 1 && OP == 5);
-			UC_State.sinais.S3 = (UC_State.inteiro == 1 && OP == 2) || (UC_State.inteiro == 1 && OP == 3) || (UC_State.inteiro == 1 && OP == 20) || (UC_State.inteiro == 1 && OP == 21) || (UC_State.inteiro == 1 && OP == 8) || (UC_State.inteiro == 1 && OP == 12) || (UC_State.inteiro == 1 && OP == 5);
+			UC_State.sinais.S0 = UC_State.inteiro == 0 || UC_State.inteiro == 6 || UC_State.inteiro == 13 || UC_State.inteiro == 14 || (UC_State.inteiro == 1 && instruction_31_26 == 2) || (UC_State.inteiro == 2 && instruction_31_26 == 43) || (UC_State.inteiro == 2 && instruction_31_26 == 35) || (UC_State.inteiro == 1 && instruction_31_26 == 20) || (UC_State.inteiro == 1 && instruction_31_26 == 8) || (UC_State.inteiro == 1 && instruction_31_26 == 5);
+			UC_State.sinais.S1 = UC_State.inteiro == 6 || UC_State.inteiro == 13 || UC_State.inteiro == 14 || (UC_State.inteiro == 1 && instruction_31_26 == 0) || (UC_State.inteiro == 1 && instruction_31_26 == 35) || (UC_State.inteiro == 1 && instruction_31_26 == 43) || (UC_State.inteiro == 2 && instruction_31_26 == 35) || (UC_State.inteiro == 1 && instruction_31_26 == 3) || (UC_State.inteiro == 1 && instruction_31_26 == 20) || (UC_State.inteiro == 1 && instruction_31_26 == 12) || (UC_State.inteiro == 1 && instruction_31_26 == 5);
+			UC_State.sinais.S2 = UC_State.inteiro == 3 || UC_State.inteiro == 6 || UC_State.inteiro == 13 || UC_State.inteiro == 14 || (UC_State.inteiro == 1 && instruction_31_26 == 0) || (UC_State.inteiro == 2 && instruction_31_26 == 43) || (UC_State.inteiro == 1 && instruction_31_26 == 21) || (UC_State.inteiro == 1 && instruction_31_26 == 8) || (UC_State.inteiro == 1 && instruction_31_26 == 12) || (UC_State.inteiro == 1 && instruction_31_26 == 5);
+			UC_State.sinais.S3 = (UC_State.inteiro == 1 && instruction_31_26 == 2) || (UC_State.inteiro == 1 && instruction_31_26 == 3) || (UC_State.inteiro == 1 && instruction_31_26 == 20) || (UC_State.inteiro == 1 && instruction_31_26 == 21) || (UC_State.inteiro == 1 && instruction_31_26 == 8) || (UC_State.inteiro == 1 && instruction_31_26 == 12) || (UC_State.inteiro == 1 && instruction_31_26 == 5);
 
 			sem_wait(&cu_sem);
 
 			cu_signals = local.inteiro;
-			sem_post(&pc_sem);
+			sem_post(&and_sem);
 		}
 	}
 
@@ -564,7 +565,13 @@
 
 		while(1){
 			sem_wait(&signExtend_sem);
-
+			signExtendOut = instruction_15_0;
+			if(TestBit(&(signExtendOut+15) == 1){
+				SetBits(&signExtendOut,16,0b1111111111111111,16);
+			}
+			else{
+				SetBits(&signExtendOut,16,0,16);
+			}
 			sem_post(&shiftLeftMuxALU_sem);
 		}	
 	}
@@ -575,7 +582,7 @@
 		while(1){
 			sem_wait(&shiftLeftMuxALU_sem);
 			shiftLeftMuxALU = signExtendOut << 2;
-			sem_post(aluSrcB_mux_sem);
+			sem_post(&aluSrcB_mux_sem);
 		}
 	}
 
@@ -586,6 +593,7 @@
 			sem_wait(&shiftLeftPCSrc_sem);
 			shiftLeftMuxPCSource = instruction_25_0 << 2;
 			//concatenar com PC[31-28]
+			SetBits(&shiftLeftMuxPCSource,28,pc>>28,4);  
 			sem_wait(&pcSrc_mux_sem);
 		}
 	}
@@ -609,7 +617,7 @@
 
 		while(1){
 			sem_wait(&or_sem);
-			if (getPCWrite() && andToOr) {
+			if (getPCWrite() || andToOr) {
 				orToPc = 1;
 			} else {
 				orToPc = 0;
